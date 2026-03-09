@@ -5,6 +5,10 @@ import { DragManager } from './drag.js';
 import { ConnectManager } from './connect.js';
 import { SelectionManager } from './select.js';
 import { ClipboardManager } from './clipboard.js';
+import { toast } from './toast.js';
+
+// Expose toast globally for use by any module
+window.toast = toast;
 
 const svg = document.getElementById('workflow-canvas');
 const wfId = document.getElementById('graphiti-data')?.dataset.workflowId;

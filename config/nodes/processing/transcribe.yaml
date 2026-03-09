@@ -14,8 +14,8 @@ shape:
   width: 200
   minWidth: 160
   maxWidth: 320
-  headerColor: "var(--green)"
-  headerBackground: "var(--green-dim)"
+  headerColor: "var(--node-processor)"
+  headerBackground: "var(--node-processor-bg)"
 ports:
   inputs:
     - id: in-main
@@ -54,7 +54,7 @@ attributes:
 validation:
   connectionRules:
     - outputPort: out-main
-      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetCategories: ["Processing", "Destinations", "Control"]
       allowedTargetPorts: ["data"]
     - outputPort: out-error
       allowedTargetCategories: ["Destinations", "Control"]

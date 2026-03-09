@@ -1,4 +1,17 @@
 // Command dispatcher: sends commands to server, handles undo/redo, keyboard shortcuts
+import { toast } from './toast.js';
+
+// Human-readable error messages for common command failures
+const ERROR_LABELS = {
+  add_edge: 'Connection failed',
+  add_node: 'Could not add node',
+  move_node: 'Could not move node',
+  move_nodes: 'Could not move nodes',
+  remove_node: 'Could not delete node',
+  remove_edge: 'Could not delete connection',
+  update_attribute: 'Could not update attribute',
+};
+
 export class CommandDispatcher {
   constructor(workflowId) {
     this.workflowId = workflowId;
@@ -14,12 +27,17 @@ export class CommandDispatcher {
         body: JSON.stringify({ type, ...payload }),
       });
       if (!resp.ok) {
-        console.error(`[dispatch] ${type} HTTP ${resp.status}:`, await resp.text());
+        const text = await resp.text();
+        console.error(`[dispatch] ${type} HTTP ${resp.status}:`, text);
+        toast.error(ERROR_LABELS[type] || 'Command failed');
         return { ok: false };
       }
       const result = await resp.json();
       if (!result.ok) {
         console.error(`[dispatch] ${type} failed:`, result.error);
+        const label = ERROR_LABELS[type] || 'Command failed';
+        const detail = this._humanizeError(result.error);
+        toast.warning(`${label}: ${detail}`);
       } else if (result.workflow) {
         window.canvasEngine?.syncCanvas(result.workflow);
       }
@@ -27,30 +45,53 @@ export class CommandDispatcher {
       return result;
     } catch (err) {
       console.error(`[dispatch] ${type} exception:`, err);
+      toast.error('Network error — could not reach the server');
       return { ok: false };
     }
   }
 
+  _humanizeError(msg) {
+    if (!msg) return 'unknown error';
+    // Strip technical prefixes for cleaner display
+    return msg
+      .replace(/^connection not allowed by node definition rules:\s*/i, '')
+      .replace(/^workflow [^:]+:\s*/i, '');
+  }
+
   async undo() {
-    const resp = await fetch(`/api/workflows/${this.workflowId}/undo`, { method: 'POST' });
-    const result = await resp.json();
-    if (result.ok && result.workflow) {
-      window.canvasEngine?.syncCanvas(result.workflow);
-      this.selection?.clearSelection();
+    try {
+      const resp = await fetch(`/api/workflows/${this.workflowId}/undo`, { method: 'POST' });
+      const result = await resp.json();
+      if (result.ok && result.workflow) {
+        window.canvasEngine?.syncCanvas(result.workflow);
+        this.selection?.clearSelection();
+      } else if (result.error) {
+        toast.info('Nothing to undo');
+      }
+      this._updateButtons(result.canUndo, result.canRedo);
+      return result;
+    } catch (err) {
+      toast.error('Network error — could not reach the server');
+      return { ok: false };
     }
-    this._updateButtons(result.canUndo, result.canRedo);
-    return result;
   }
 
   async redo() {
-    const resp = await fetch(`/api/workflows/${this.workflowId}/redo`, { method: 'POST' });
-    const result = await resp.json();
-    if (result.ok && result.workflow) {
-      window.canvasEngine?.syncCanvas(result.workflow);
-      this.selection?.clearSelection();
+    try {
+      const resp = await fetch(`/api/workflows/${this.workflowId}/redo`, { method: 'POST' });
+      const result = await resp.json();
+      if (result.ok && result.workflow) {
+        window.canvasEngine?.syncCanvas(result.workflow);
+        this.selection?.clearSelection();
+      } else if (result.error) {
+        toast.info('Nothing to redo');
+      }
+      this._updateButtons(result.canUndo, result.canRedo);
+      return result;
+    } catch (err) {
+      toast.error('Network error — could not reach the server');
+      return { ok: false };
     }
-    this._updateButtons(result.canUndo, result.canRedo);
-    return result;
   }
 
   _updateButtons(canUndo, canRedo) {

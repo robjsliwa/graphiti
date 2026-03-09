@@ -14,8 +14,8 @@ shape:
   width: 200
   minWidth: 160
   maxWidth: 320
-  headerColor: "var(--orange)"
-  headerBackground: "var(--orange-dim)"
+  headerColor: "var(--node-destination)"
+  headerBackground: "var(--node-destination-bg)"
 ports:
   inputs:
     - id: in-main

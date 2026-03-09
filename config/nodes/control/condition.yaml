@@ -14,8 +14,8 @@ shape:
   width: 160
   minWidth: 120
   maxWidth: 240
-  headerColor: "var(--yellow)"
-  headerBackground: "var(--yellow-dim)"
+  headerColor: "var(--node-control)"
+  headerBackground: "var(--node-control-bg)"
 ports:
   inputs:
     - id: in-main
