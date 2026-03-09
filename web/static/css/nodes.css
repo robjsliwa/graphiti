@@ -1,0 +1,41 @@
+.node { cursor: pointer; }
+.node:hover .node-bg { stroke: var(--accent); }
+.node.selected .node-bg { stroke: var(--accent); stroke-width: 2; }
+
+.node-bg { transition: stroke 0.15s; }
+.node-header { pointer-events: none; }
+.node-icon { font-size: 14px; font-weight: 700; pointer-events: none; }
+.node-title { font-size: 12px; font-weight: 500; pointer-events: none; }
+.node-attr-label { font-size: 11px; fill: var(--text-muted); pointer-events: none; }
+
+.port {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-width: 1.5;
+  cursor: crosshair;
+  transition: transform 0.15s, stroke 0.15s;
+}
+.port:hover {
+  stroke: var(--accent);
+  transform: scale(1.3);
+}
+.port-data { stroke: var(--accent); }
+.port-control { stroke: var(--node-control); }
+.port-error { stroke: var(--danger); }
+
+.edge {
+  pointer-events: stroke;
+  cursor: pointer;
+  transition: stroke 0.15s, stroke-width 0.15s;
+}
+.edge:hover { stroke: var(--accent); stroke-width: 3; }
+.edge.selected { stroke: var(--accent); stroke-width: 3; }
+
+@keyframes pulse {
+  0%, 100% { stroke-opacity: 1; }
+  50% { stroke-opacity: 0.4; }
+}
+.node.running .node-bg {
+  animation: pulse 1.5s ease-in-out infinite;
+  stroke: var(--warning);
+}

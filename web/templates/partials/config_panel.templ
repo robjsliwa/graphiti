@@ -1,0 +1,118 @@
+package partials
+
+import "graphiti/internal/domain"
+
+templ ConfigPanel(node *domain.NodeInstance) {
+	<div class="config-node-header">
+		<h3>{ node.Label }</h3>
+		<span class="config-def-id">{ node.DefinitionID }</span>
+	</div>
+	<div class="config-tabs">
+		<button class="tab-btn active">Configure</button>
+		<button class="tab-btn" disabled>Logs</button>
+		<button class="tab-btn" disabled>YAML</button>
+	</div>
+	if node.Definition != nil {
+		<div class="config-attributes">
+			for _, attr := range node.Definition.Attributes {
+				if attr.Display == domain.DisplayConfigPanel || attr.Display == domain.DisplayBoth || attr.Display == "" {
+					<div class="config-field">
+						<label for={ "attr-" + attr.ID }>
+							{ attr.Label }
+							if attr.Required {
+								<span class="required">*</span>
+							}
+						</label>
+						@renderAttributeInput(node, attr)
+						if attr.Hint != "" {
+							<span class="field-hint">{ attr.Hint }</span>
+						}
+					</div>
+				}
+			}
+		</div>
+	}
+}
+
+templ renderAttributeInput(node *domain.NodeInstance, attr domain.AttributeDefinition) {
+	switch attr.Type {
+		case domain.AttrTypeString:
+			<input
+				type="text"
+				id={ "attr-" + attr.ID }
+				name={ attr.ID }
+				value={ attrValueStr(node.AttributeValues[attr.ID]) }
+				class="input"
+				hx-patch={ "/api/workflows/" + node.ID + "/attributes" }
+				hx-trigger="keyup changed delay:500ms"
+			/>
+		case domain.AttrTypeText:
+			<textarea
+				id={ "attr-" + attr.ID }
+				name={ attr.ID }
+				class="input"
+				hx-patch={ "/api/workflows/" + node.ID + "/attributes" }
+				hx-trigger="keyup changed delay:500ms"
+			>{ attrValueStr(node.AttributeValues[attr.ID]) }</textarea>
+		case domain.AttrTypeNumber:
+			<input
+				type="number"
+				id={ "attr-" + attr.ID }
+				name={ attr.ID }
+				value={ attrValueStr(node.AttributeValues[attr.ID]) }
+				class="input"
+			/>
+		case domain.AttrTypeBoolean:
+			<label class="toggle">
+				<input
+					type="checkbox"
+					id={ "attr-" + attr.ID }
+					name={ attr.ID }
+					checked?={ attrValueBool(node.AttributeValues[attr.ID]) }
+				/>
+				<span class="toggle-slider"></span>
+			</label>
+		case domain.AttrTypeEnum:
+			<select id={ "attr-" + attr.ID } name={ attr.ID } class="input">
+				for _, opt := range attr.Options {
+					<option value={ opt } selected?={ attrValueStr(node.AttributeValues[attr.ID]) == opt }>{ opt }</option>
+				}
+			</select>
+		case domain.AttrTypeSecret:
+			<input
+				type="password"
+				id={ "attr-" + attr.ID }
+				name={ attr.ID }
+				placeholder="Enter secret..."
+				class="input"
+			/>
+		default:
+			<input
+				type="text"
+				id={ "attr-" + attr.ID }
+				name={ attr.ID }
+				value={ attrValueStr(node.AttributeValues[attr.ID]) }
+				class="input"
+			/>
+	}
+}
+
+func attrValueStr(v any) string {
+	if v == nil {
+		return ""
+	}
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return ""
+}
+
+func attrValueBool(v any) bool {
+	if v == nil {
+		return false
+	}
+	if b, ok := v.(bool); ok {
+		return b
+	}
+	return false
+}

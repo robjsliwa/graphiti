@@ -1,0 +1,39 @@
+apiVersion: graphiti/v1
+kind: NodeDefinition
+metadata:
+  id: source-twilio
+  name: Twilio
+  description: "Receives call recording callbacks"
+  version: "1.0.0"
+  icon: "T"
+category:
+  group: Sources
+  order: 20
+shape:
+  type: rounded-rect
+  width: 200
+  minWidth: 160
+  maxWidth: 320
+  headerColor: "var(--cyan)"
+  headerBackground: "var(--cyan-dim)"
+ports:
+  inputs: []
+  outputs:
+    - id: out-main
+      label: "Output"
+      type: data
+      position: right-center
+      maxConnections: -1
+attributes:
+  - id: endpoint
+    label: "Endpoint"
+    type: string
+    default: "/ingest/twilio"
+    required: true
+    display: node-body
+    group: "Connection"
+validation:
+  connectionRules:
+    - outputPort: out-main
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data"]

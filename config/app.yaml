@@ -1,0 +1,37 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+  readTimeout: 30s
+  writeTimeout: 30s
+
+storage:
+  adapter: sqlite
+  sqlite:
+    path: "./data/graphiti.db"
+    walMode: true
+
+nodeDefinitions:
+  path: "./config/nodes"
+
+theme:
+  default: light
+
+deploy:
+  defaultTarget: production
+  hmacSecret: "${DEPLOY_HMAC_SECRET}"
+  targets:
+    production:
+      webhookURL: "${DEPLOY_WEBHOOK_PROD}"
+      timeout: 30s
+      retries: 3
+    staging:
+      webhookURL: "${DEPLOY_WEBHOOK_STAGING}"
+      timeout: 30s
+      retries: 3
+
+commandHistory:
+  maxUndoDepth: 100
+
+logging:
+  level: info
+  format: json

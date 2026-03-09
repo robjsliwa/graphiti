@@ -1,0 +1,86 @@
+package pages
+
+import (
+	"graphiti/internal/domain"
+	"graphiti/web/templates/layouts"
+	"graphiti/web/templates/partials"
+	"graphiti/web/templates/svg"
+)
+
+type BuilderData struct {
+	Username        string
+	Workflow        *domain.Workflow
+	NodeDefinitions []*domain.NodeDefinition
+}
+
+templ Builder(data BuilderData) {
+	@layouts.Base(data.Workflow.Name) {
+		<nav class="top-nav">
+			<div class="nav-brand">
+				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<circle cx="12" cy="12" r="3"></circle>
+					<path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"></path>
+				</svg>
+				<span class="nav-title">Graphiti</span>
+			</div>
+			<div class="nav-breadcrumb">
+				<a href="/">Workflows</a> / { data.Workflow.Name }
+			</div>
+			<div class="nav-actions">
+				<button class="btn btn-success" id="deploy-btn" disabled>Deploy</button>
+				<span class="nav-user">{ data.Username }</span>
+			</div>
+		</nav>
+		<div class="builder-layout">
+			<aside class="panel panel-left" id="palette-panel">
+				<div class="panel-header">
+					<h2>Components</h2>
+					<input
+						type="search"
+						placeholder="Search nodes..."
+						class="search-input"
+						name="q"
+						hx-get="/api/nodes/search"
+						hx-trigger="keyup changed delay:200ms"
+						hx-target="#node-palette"
+					/>
+				</div>
+				<div id="node-palette">
+					@partials.NodePalette(data.NodeDefinitions)
+				</div>
+			</aside>
+			<main class="canvas-container" id="canvas-container">
+				@svg.Canvas(data.Workflow)
+				<div class="canvas-hud">
+					<div class="zoom-controls">
+						<button class="btn btn-icon" id="zoom-out" title="Zoom out">-</button>
+						<span id="zoom-level">100%</span>
+						<button class="btn btn-icon" id="zoom-in" title="Zoom in">+</button>
+						<button class="btn btn-icon" id="zoom-fit" title="Fit to view">Fit</button>
+					</div>
+					<div class="undo-redo">
+						<button class="btn btn-icon" id="undo-btn" title="Undo (Ctrl+Z)" disabled>&#x21A9;</button>
+						<button class="btn btn-icon" id="redo-btn" title="Redo (Ctrl+Shift+Z)" disabled>&#x21AA;</button>
+					</div>
+				</div>
+			</main>
+			<aside class="panel panel-right" id="config-panel">
+				<div class="panel-header">
+					<h2>Configuration</h2>
+				</div>
+				<div class="panel-body" id="config-content">
+					<div class="empty-config">
+						<p>Select a node to configure</p>
+					</div>
+				</div>
+			</aside>
+		</div>
+		<script type="module" src="/static/js/canvas.js"></script>
+		<script type="module" src="/static/js/commands.js"></script>
+		<script>
+			window.GRAPHITI = {
+				workflowID: "{ data.Workflow.ID }",
+			};
+		</script>
+	}
+}

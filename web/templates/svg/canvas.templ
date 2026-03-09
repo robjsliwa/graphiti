@@ -1,0 +1,382 @@
+package svg
+
+import (
+	"graphiti/internal/domain"
+	"fmt"
+)
+
+templ Canvas(wf *domain.Workflow) {
+	<svg
+		id="workflow-canvas"
+		class="workflow-canvas"
+		xmlns="http://www.w3.org/2000/svg"
+		width="100%"
+		height="100%"
+	>
+		<defs>
+			<pattern id="dot-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+				<circle cx="12" cy="12" r="1" fill="var(--grid-dot, #d0d0d0)"/>
+			</pattern>
+			<marker
+				id="arrowhead"
+				markerWidth="10"
+				markerHeight="7"
+				refX="10"
+				refY="3.5"
+				orient="auto"
+			>
+				<polygon points="0 0, 10 3.5, 0 7" fill="var(--edge-color, #94a3b8)"/>
+			</marker>
+		</defs>
+		<!-- Grid background -->
+		<rect width="100%" height="100%" fill="url(#dot-grid)" class="canvas-grid"/>
+		<!-- Main content group (pan/zoom transforms applied here) -->
+		<g class="canvas-content" transform="translate(0, 0) scale(1)">
+			<!-- Edge layer (below nodes) -->
+			<g class="edge-layer">
+				for _, edge := range wf.Edges {
+					@Edge(wf, edge)
+				}
+			</g>
+			<!-- Node layer -->
+			<g class="node-layer">
+				for i := range wf.Nodes {
+					@Node(&wf.Nodes[i])
+				}
+			</g>
+			<!-- Interaction layer (ghosts, selection rect) -->
+			<g class="interaction-layer"></g>
+		</g>
+	</svg>
+}
+
+templ Node(node *domain.NodeInstance) {
+	<g
+		class="node"
+		data-node-id={ node.ID }
+		data-definition-id={ node.DefinitionID }
+		transform={ fmt.Sprintf("translate(%g, %g)", node.X, node.Y) }
+	>
+		<!-- Background shape -->
+		@nodeShape(node)
+		<!-- Header -->
+		<rect
+			x="0"
+			y="0"
+			width={ nodeWidth(node) }
+			height="32"
+			rx="6"
+			ry="6"
+			class="node-header"
+			fill={ headerBg(node) }
+		/>
+		<!-- Clip the bottom corners of header -->
+		<rect
+			x="0"
+			y="16"
+			width={ nodeWidth(node) }
+			height="16"
+			fill={ headerBg(node) }
+		/>
+		<!-- Icon -->
+		<text x="12" y="22" class="node-icon" fill={ headerColor(node) }>
+			{ nodeIcon(node) }
+		</text>
+		<!-- Title -->
+		<text x="32" y="22" class="node-title" fill={ headerColor(node) }>
+			{ node.Label }
+		</text>
+		<!-- Attribute rows for node-body display -->
+		if node.Definition != nil {
+			for i, attr := range node.Definition.Attributes {
+				if attr.Display == domain.DisplayNodeBody || attr.Display == domain.DisplayBoth {
+					<text
+						x="12"
+						y={ fmt.Sprintf("%d", 52 + i*20) }
+						class="node-attr-label"
+					>
+						{ attr.Label }: { attrStr(node.AttributeValues[attr.ID]) }
+					</text>
+				}
+			}
+		}
+		<!-- Ports -->
+		if node.Definition != nil {
+			for i, port := range node.Definition.Inputs {
+				@Port(node, port, true, i)
+			}
+			for i, port := range node.Definition.Outputs {
+				@Port(node, port, false, i)
+			}
+		}
+	</g>
+}
+
+templ Port(node *domain.NodeInstance, port domain.PortDefinition, isInput bool, index int) {
+	<circle
+		class={ "port", portClass(port.Type, isInput) }
+		data-port-id={ port.ID }
+		data-port-type={ string(port.Type) }
+		data-is-input={ boolStr(isInput) }
+		cx={ portX(node, port, isInput) }
+		cy={ portY(node, port, index) }
+		r="6"
+	/>
+}
+
+templ Edge(wf *domain.Workflow, edge domain.Edge) {
+	<path
+		class="edge"
+		data-edge-id={ edge.ID }
+		data-source-node={ edge.SourceNodeID }
+		data-target-node={ edge.TargetNodeID }
+		d={ edgePath(wf, edge) }
+		fill="none"
+		stroke="var(--edge-color, #94a3b8)"
+		stroke-width="2"
+		marker-end="url(#arrowhead)"
+	/>
+}
+
+templ nodeShape(node *domain.NodeInstance) {
+	if node.Definition != nil && node.Definition.Shape.Type == domain.ShapeDiamond {
+		<polygon
+			points={ diamondPoints(node) }
+			class="node-bg"
+			fill="var(--surface)"
+			stroke="var(--border)"
+			stroke-width="1.5"
+		/>
+	} else if node.Definition != nil && node.Definition.Shape.Type == domain.ShapeHexagon {
+		<polygon
+			points={ hexagonPoints(node) }
+			class="node-bg"
+			fill="var(--surface)"
+			stroke="var(--border)"
+			stroke-width="1.5"
+		/>
+	} else if node.Definition != nil && node.Definition.Shape.Type == domain.ShapeSubWorkflow {
+		<!-- Double border for sub-workflow -->
+		<rect
+			x="0"
+			y="0"
+			width={ nodeWidth(node) }
+			height={ nodeHeight(node) }
+			rx="8"
+			ry="8"
+			class="node-bg"
+			fill="var(--surface)"
+			stroke="var(--border)"
+			stroke-width="1.5"
+		/>
+		<rect
+			x="3"
+			y="3"
+			width={ nodeWidthInset(node, 6) }
+			height={ nodeHeightInset(node, 6) }
+			rx="6"
+			ry="6"
+			fill="none"
+			stroke="var(--border)"
+			stroke-width="1"
+		/>
+	} else {
+		<!-- Default rounded rect -->
+		<rect
+			x="0"
+			y="0"
+			width={ nodeWidth(node) }
+			height={ nodeHeight(node) }
+			rx="8"
+			ry="8"
+			class="node-bg"
+			fill="var(--surface)"
+			stroke="var(--border)"
+			stroke-width="1.5"
+		/>
+	}
+}
+
+func nodeWidth(node *domain.NodeInstance) string {
+	w := 200
+	if node.Definition != nil && node.Definition.Shape.Width > 0 {
+		w = node.Definition.Shape.Width
+	}
+	return fmt.Sprintf("%d", w)
+}
+
+func nodeWidthInset(node *domain.NodeInstance, inset int) string {
+	w := 200
+	if node.Definition != nil && node.Definition.Shape.Width > 0 {
+		w = node.Definition.Shape.Width
+	}
+	return fmt.Sprintf("%d", w-inset)
+}
+
+func nodeHeight(node *domain.NodeInstance) string {
+	h := 80
+	if node.Definition != nil {
+		bodyAttrs := 0
+		for _, a := range node.Definition.Attributes {
+			if a.Display == domain.DisplayNodeBody || a.Display == domain.DisplayBoth {
+				bodyAttrs++
+			}
+		}
+		h = 40 + bodyAttrs*20 + 8
+		if h < 60 {
+			h = 60
+		}
+	}
+	return fmt.Sprintf("%d", h)
+}
+
+func nodeHeightInset(node *domain.NodeInstance, inset int) string {
+	h := 80
+	if node.Definition != nil {
+		bodyAttrs := 0
+		for _, a := range node.Definition.Attributes {
+			if a.Display == domain.DisplayNodeBody || a.Display == domain.DisplayBoth {
+				bodyAttrs++
+			}
+		}
+		h = 40 + bodyAttrs*20 + 8
+		if h < 60 {
+			h = 60
+		}
+	}
+	return fmt.Sprintf("%d", h-inset)
+}
+
+func headerBg(node *domain.NodeInstance) string {
+	if node.Definition != nil && node.Definition.Shape.HeaderBackground != "" {
+		return node.Definition.Shape.HeaderBackground
+	}
+	return "var(--surface-2)"
+}
+
+func headerColor(node *domain.NodeInstance) string {
+	if node.Definition != nil && node.Definition.Shape.HeaderColor != "" {
+		return node.Definition.Shape.HeaderColor
+	}
+	return "var(--text)"
+}
+
+func nodeIcon(node *domain.NodeInstance) string {
+	if node.Definition != nil && node.Definition.Icon != "" {
+		return node.Definition.Icon
+	}
+	return "?"
+}
+
+func portClass(portType domain.PortType, isInput bool) string {
+	dir := "output"
+	if isInput {
+		dir = "input"
+	}
+	return "port-" + string(portType) + " port-" + dir
+}
+
+func portX(node *domain.NodeInstance, port domain.PortDefinition, isInput bool) string {
+	w := 200
+	if node.Definition != nil && node.Definition.Shape.Width > 0 {
+		w = node.Definition.Shape.Width
+	}
+	switch port.Position {
+	case domain.PortPositionLeftCenter:
+		return "0"
+	case domain.PortPositionRightCenter, domain.PortPositionRightTop, domain.PortPositionRightBottom:
+		return fmt.Sprintf("%d", w)
+	default:
+		if isInput {
+			return "0"
+		}
+		return fmt.Sprintf("%d", w)
+	}
+}
+
+func portY(node *domain.NodeInstance, port domain.PortDefinition, index int) string {
+	switch port.Position {
+	case domain.PortPositionTopCenter:
+		return "0"
+	case domain.PortPositionBottomCenter:
+		return nodeHeight(node)
+	case domain.PortPositionRightTop:
+		return fmt.Sprintf("%d", 20+index*20)
+	case domain.PortPositionRightBottom:
+		return fmt.Sprintf("%d", 50+index*20)
+	default:
+		return fmt.Sprintf("%d", 30+index*20)
+	}
+}
+
+func boolStr(b bool) string {
+	if b {
+		return "true"
+	}
+	return "false"
+}
+
+func attrStr(v any) string {
+	if v == nil {
+		return ""
+	}
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return fmt.Sprintf("%v", v)
+}
+
+func edgePath(wf *domain.Workflow, edge domain.Edge) string {
+	srcNode := wf.FindNode(edge.SourceNodeID)
+	tgtNode := wf.FindNode(edge.TargetNodeID)
+	if srcNode == nil || tgtNode == nil {
+		return ""
+	}
+
+	srcW := 200.0
+	if srcNode.Definition != nil && srcNode.Definition.Shape.Width > 0 {
+		srcW = float64(srcNode.Definition.Shape.Width)
+	}
+
+	x1 := srcNode.X + srcW
+	y1 := srcNode.Y + 30
+	x2 := tgtNode.X
+	y2 := tgtNode.Y + 30
+	cpOffset := (x2 - x1) * 0.5
+	if cpOffset < 50 {
+		cpOffset = 50
+	}
+
+	return fmt.Sprintf("M %g %g C %g %g, %g %g, %g %g",
+		x1, y1,
+		x1+cpOffset, y1,
+		x2-cpOffset, y2,
+		x2, y2)
+}
+
+func diamondPoints(node *domain.NodeInstance) string {
+	w := 200
+	if node.Definition != nil && node.Definition.Shape.Width > 0 {
+		w = node.Definition.Shape.Width
+	}
+	h := 80
+	hw := w / 2
+	hh := h / 2
+	return fmt.Sprintf("%d %d, %d %d, %d %d, %d %d", hw, 0, w, hh, hw, h, 0, hh)
+}
+
+func hexagonPoints(node *domain.NodeInstance) string {
+	w := 200
+	if node.Definition != nil && node.Definition.Shape.Width > 0 {
+		w = node.Definition.Shape.Width
+	}
+	h := 80
+	offset := 20
+	return fmt.Sprintf("%d %d, %d %d, %d %d, %d %d, %d %d, %d %d",
+		offset, 0,
+		w-offset, 0,
+		w, h/2,
+		w-offset, h,
+		offset, h,
+		0, h/2)
+}

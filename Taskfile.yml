@@ -1,0 +1,78 @@
+version: '3'
+
+vars:
+  BINARY: graphiti
+  BUILD_DIR: ./bin
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  generate:
+    desc: Generate templ files
+    cmds:
+      - templ generate
+    sources:
+      - web/templates/**/*.templ
+
+  build:
+    desc: Build the application
+    deps: [generate]
+    cmds:
+      - go build -o {{.BUILD_DIR}}/{{.BINARY}} ./cmd/server
+
+  run:
+    desc: Build and start the server
+    deps: [build]
+    cmds:
+      - "{{.BUILD_DIR}}/{{.BINARY}}"
+
+  test:
+    desc: Run all tests
+    deps: [generate]
+    cmds:
+      - go test ./...
+
+  test:domain:
+    desc: Run domain tests only
+    cmds:
+      - go test ./internal/domain/...
+
+  test:app:
+    desc: Run app service tests only
+    deps: [generate]
+    cmds:
+      - go test ./internal/app/...
+
+  test:adapters:
+    desc: Run adapter tests only
+    deps: [generate]
+    cmds:
+      - go test ./internal/adapters/...
+
+  test:cover:
+    desc: Run tests with coverage report
+    deps: [generate]
+    cmds:
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -func=coverage.out
+
+  lint:
+    desc: Run golangci-lint
+    deps: [generate]
+    cmds:
+      - golangci-lint run ./...
+
+  clean:
+    desc: Remove build artifacts
+    cmds:
+      - rm -rf {{.BUILD_DIR}}
+      - rm -f coverage.out
+
+  dev:
+    desc: Run in development mode with live reload
+    deps: [generate]
+    cmds:
+      - go run ./cmd/server

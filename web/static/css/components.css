@@ -1,0 +1,108 @@
+.top-nav {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
+}
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+  font-weight: 700;
+}
+.nav-title { font-size: 16px; }
+.nav-breadcrumb {
+  flex: 1;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.nav-breadcrumb a { color: var(--text-muted); }
+.nav-breadcrumb a:hover { color: var(--text); }
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.nav-user {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.dashboard {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  overflow-y: auto;
+  height: calc(100vh - 48px);
+}
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.dashboard-header h1 { font-size: 24px; }
+
+.workflow-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.workflow-card {
+  display: block;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  color: var(--text);
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.workflow-card:hover {
+  text-decoration: none;
+  box-shadow: var(--shadow-lg);
+  border-color: var(--accent);
+}
+.workflow-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.workflow-card-header h3 { font-size: 15px; }
+.workflow-card-meta {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 64px 24px;
+  color: var(--text-muted);
+}
+.empty-state h2 { margin-bottom: 8px; color: var(--text); }
+
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: var(--bg);
+}
+.login-card {
+  text-align: center;
+  padding: 48px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+}
+.login-card h1 { font-size: 32px; margin-bottom: 8px; }
+.login-card p { color: var(--text-muted); margin-bottom: 24px; }

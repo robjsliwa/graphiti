@@ -1,0 +1,61 @@
+apiVersion: graphiti/v1
+kind: NodeDefinition
+metadata:
+  id: proc-transcribe
+  name: Transcribe
+  description: "Converts audio to text using speech-to-text"
+  version: "1.0.0"
+  icon: "Tr"
+category:
+  group: Processing
+  order: 10
+shape:
+  type: rounded-rect
+  width: 200
+  minWidth: 160
+  maxWidth: 320
+  headerColor: "var(--green)"
+  headerBackground: "var(--green-dim)"
+ports:
+  inputs:
+    - id: in-main
+      label: "Input"
+      type: data
+      position: left-center
+      maxConnections: 1
+  outputs:
+    - id: out-main
+      label: "Output"
+      type: data
+      position: right-center
+      maxConnections: -1
+    - id: out-error
+      label: "Error"
+      type: error
+      position: right-bottom
+      maxConnections: -1
+attributes:
+  - id: language
+    label: "Language"
+    type: enum
+    default: "en-US"
+    required: true
+    display: config-panel
+    group: "Settings"
+    options: ["en-US", "es-ES", "fr-FR", "de-DE", "ja-JP"]
+  - id: model
+    label: "Model"
+    type: enum
+    default: "standard"
+    required: false
+    display: config-panel
+    group: "Settings"
+    options: ["standard", "enhanced", "medical"]
+validation:
+  connectionRules:
+    - outputPort: out-main
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data"]
+    - outputPort: out-error
+      allowedTargetCategories: ["Destinations", "Control"]
+      allowedTargetPorts: ["error", "data"]

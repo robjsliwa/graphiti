@@ -1,0 +1,67 @@
+apiVersion: graphiti/v1
+kind: NodeDefinition
+metadata:
+  id: dest-s3-storage
+  name: S3 Storage
+  description: "Stores data in Amazon S3 buckets"
+  version: "1.0.0"
+  icon: "S3"
+category:
+  group: Destinations
+  order: 10
+shape:
+  type: rounded-rect
+  width: 200
+  minWidth: 160
+  maxWidth: 320
+  headerColor: "var(--orange)"
+  headerBackground: "var(--orange-dim)"
+ports:
+  inputs:
+    - id: in-main
+      label: "Input"
+      type: data
+      position: left-center
+      maxConnections: -1
+  outputs: []
+attributes:
+  - id: bucket
+    label: "Bucket Name"
+    type: string
+    required: true
+    display: node-body
+    group: "Connection"
+    hint: "The S3 bucket to write to"
+  - id: region
+    label: "AWS Region"
+    type: enum
+    default: "us-east-1"
+    required: true
+    display: config-panel
+    group: "Connection"
+    options: ["us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
+  - id: access-key
+    label: "Access Key"
+    type: secret
+    required: true
+    display: config-panel
+    group: "Authentication"
+  - id: secret-key
+    label: "Secret Key"
+    type: secret
+    required: true
+    display: config-panel
+    group: "Authentication"
+  - id: prefix
+    label: "Key Prefix"
+    type: string
+    default: ""
+    required: false
+    display: config-panel
+    group: "Storage"
+    hint: "Optional path prefix for stored objects"
+validation:
+  connectionRules: []
+  attributeRules:
+    - expression: "bucket != ''"
+      message: "Bucket name is required"

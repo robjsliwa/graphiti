@@ -1,0 +1,15 @@
+# Environment
+.env
+
+# Build artifacts
+/bin/
+/data/
+coverage.out
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp

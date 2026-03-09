@@ -1,0 +1,11 @@
+auth:
+  provider: fake
+  github:
+    clientId: "${GITHUB_CLIENT_ID}"
+    clientSecret: "${GITHUB_CLIENT_SECRET}"
+    scopes: ["user:email", "read:org"]
+    allowedOrgs: []
+  session:
+    secret: "${SESSION_SECRET}"
+    maxAge: 86400
+    secure: false

@@ -1,0 +1,23 @@
+package layouts
+
+templ Base(title string) {
+	<!DOCTYPE html>
+	<html lang="en" data-theme="light">
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<title>{ title } - Graphiti</title>
+		<script src="https://unpkg.com/htmx.org@2.0.4"></script>
+		<link rel="stylesheet" href="/static/css/base.css"/>
+		<link rel="stylesheet" href="/static/css/components.css"/>
+		<link rel="stylesheet" href="/static/css/panels.css"/>
+		<link rel="stylesheet" href="/static/css/canvas.css"/>
+		<link rel="stylesheet" href="/static/css/nodes.css"/>
+		<link rel="stylesheet" href="/static/css/themes/light.css"/>
+		<link rel="stylesheet" href="/static/css/themes/dark.css"/>
+	</head>
+	<body>
+		{ children... }
+	</body>
+	</html>
+}

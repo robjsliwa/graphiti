@@ -1,0 +1,64 @@
+package partials
+
+import "graphiti/internal/domain"
+
+// groupByCategory groups node definitions by their category group.
+func groupByCategory(defs []*domain.NodeDefinition) map[string][]*domain.NodeDefinition {
+	groups := make(map[string][]*domain.NodeDefinition)
+	for _, d := range defs {
+		groups[d.Category.Group] = append(groups[d.Category.Group], d)
+	}
+	return groups
+}
+
+var categoryOrder = []string{"Sources", "Processing", "Destinations", "Control"}
+
+templ NodePalette(defs []*domain.NodeDefinition) {
+	for _, cat := range categoryOrder {
+		if nodes, ok := groupByCategory(defs)[cat]; ok && len(nodes) > 0 {
+			<div class="palette-category">
+				<details open>
+					<summary class="palette-category-header">{ cat }</summary>
+					<div class="palette-items">
+						for _, node := range nodes {
+							@NodePaletteItem(node)
+						}
+					</div>
+				</details>
+			</div>
+		}
+	}
+}
+
+templ NodePaletteItem(def *domain.NodeDefinition) {
+	<div
+		class="palette-item"
+		draggable="true"
+		data-definition-id={ def.ID }
+		data-node-name={ def.Name }
+		data-category={ def.Category.Group }
+	>
+		<span class={ "palette-icon", "cat-" + categorySlug(def.Category.Group) }>
+			{ def.Icon }
+		</span>
+		<div class="palette-info">
+			<span class="palette-name">{ def.Name }</span>
+			<span class="palette-desc">{ def.Description }</span>
+		</div>
+	</div>
+}
+
+func categorySlug(group string) string {
+	switch group {
+	case "Sources":
+		return "source"
+	case "Processing":
+		return "processing"
+	case "Destinations":
+		return "destination"
+	case "Control":
+		return "control"
+	default:
+		return "default"
+	}
+}
