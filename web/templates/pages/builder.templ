@@ -27,6 +27,7 @@ templ Builder(data BuilderData) {
 				<a href="/">Workflows</a> / { data.Workflow.Name }
 			</div>
 			<div class="nav-actions">
+				<button class="btn btn-icon" id="theme-toggle" title="Toggle theme">&#x263E;</button>
 				<button class="btn btn-success" id="deploy-btn" disabled>Deploy</button>
 				<span class="nav-user">{ data.Username }</span>
 			</div>
@@ -75,12 +76,8 @@ templ Builder(data BuilderData) {
 				</div>
 			</aside>
 		</div>
-		<script type="module" src="/static/js/canvas.js"></script>
-		<script type="module" src="/static/js/commands.js"></script>
-		<script>
-			window.GRAPHITI = {
-				workflowID: "{ data.Workflow.ID }",
-			};
-		</script>
+		<div id="graphiti-data" data-workflow-id={ data.Workflow.ID } hidden></div>
+		<script src="/static/js/theme.js"></script>
+		<script type="module" src="/static/js/app.js"></script>
 	}
 }

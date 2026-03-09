@@ -31,6 +31,24 @@
 .edge:hover { stroke: var(--accent); stroke-width: 3; }
 .edge.selected { stroke: var(--accent); stroke-width: 3; }
 
+.port-valid-target {
+  stroke: var(--success) !important;
+  fill: rgba(16, 185, 129, 0.2);
+  transform: scale(1.4);
+}
+.port-invalid-target {
+  stroke: var(--danger) !important;
+  fill: rgba(239, 68, 68, 0.2);
+}
+
+.edge-preview {
+  pointer-events: none;
+}
+
+.selection-rect {
+  pointer-events: none;
+}
+
 @keyframes pulse {
   0%, 100% { stroke-opacity: 1; }
   50% { stroke-opacity: 0.4; }

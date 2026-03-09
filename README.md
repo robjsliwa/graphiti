@@ -24,7 +24,7 @@ Most workflow tools lock you into a specific execution runtime. Graphiti takes a
 - **Framework-agnostic** — Deploys via signed webhooks to any HTTP endpoint
 - **YAML-driven nodes** — Define new node types in config, not code
 - **Full undo/redo** — Every canvas action is reversible via the Command Pattern
-- **Server-rendered** — HTMX + Templ for a snappy UI with minimal JavaScript (~800 LOC)
+- **Server-rendered** — HTMX + Templ for a snappy UI with minimal JavaScript (~975 LOC)
 - **Single binary** — One Go binary, one SQLite file, zero infrastructure
 
 ## Architecture
@@ -51,7 +51,9 @@ graphiti/
 │       └── driven/      # SQLite, filesystem, auth, webhook
 ├── web/
 │   ├── templates/       # Templ templates (.templ → Go)
-│   └── static/          # JS, CSS, theme files
+│   └── static/
+│       ├── js/          # ES modules: app, canvas, commands, connect, drag, select, clipboard, theme
+│       └── css/         # Stylesheets with CSS custom property theming
 ├── config/
 │   ├── app.yaml         # Server, storage, deploy settings
 │   ├── auth.yaml        # Auth provider config
@@ -268,18 +270,22 @@ See [`config/app.yaml`](config/app.yaml) for server, storage, and deploy setting
 - [x] 4 sample node definitions (source, processing, destination, control)
 - [x] Light and dark CSS themes
 
-### Phase 2: Interactive Canvas — Planned
+### Phase 2: Interactive Canvas — **Complete**
 
-- [ ] Pan/zoom canvas engine (mouse wheel, trackpad, middle-click drag)
-- [ ] Drag nodes from palette to canvas
-- [ ] Move nodes with grid snapping
-- [ ] Draw edges between ports with live preview
-- [ ] Connection validation (type matching, cycles, max connections)
-- [ ] Single and multi-select (click, Ctrl+click, rubber band)
-- [ ] Delete selection with keyboard shortcuts
-- [ ] Undo/redo wired to Ctrl+Z / Ctrl+Shift+Z
-- [ ] Copy/paste/duplicate node groups
-- [ ] Config panel with HTMX forms for all attribute types
+- [x] Pan/zoom canvas engine (mouse wheel, trackpad, middle-click drag, fit-to-view)
+- [x] Drag nodes from palette to canvas with ghost preview
+- [x] Move single and multiple nodes with grid snapping
+- [x] Draw edges between ports with live Bezier curve preview
+- [x] Connection validation (port type matching, self-connection prevention)
+- [x] Single select, Ctrl+click toggle, rubber band multi-select
+- [x] Delete selection (Delete/Backspace), Escape to deselect, Ctrl+A select all
+- [x] Undo/redo wired to Ctrl+Z / Ctrl+Shift+Z with full state sync
+- [x] Copy/cut/paste/duplicate node groups via server-side clipboard
+- [x] Config panel loads via HTMX on node selection, saves via PATCH with debounce
+- [x] Theme toggle (light/dark) with localStorage persistence
+- [x] Keyboard shortcut help overlay (press `?`)
+- [x] Full workflow state sync after every command (server returns state, JS diffs SVG DOM)
+- [x] HTTP handler tests for all canvas endpoints (commands, undo/redo, clipboard, attributes)
 
 ### Phase 3: Persistence & Deploy — Planned
 
@@ -302,9 +308,9 @@ See [`config/app.yaml`](config/app.yaml) for server, storage, and deploy setting
 ### Phase 5: Advanced Features — Planned
 
 - [ ] Sub-workflow node type with drill-in navigation
-- [ ] Theme system toggle (light/dark/system)
+- [x] Theme system toggle (light/dark) — *completed in Phase 2*
 - [ ] Viewport culling and level-of-detail for large workflows
-- [ ] Full keyboard shortcut map with help overlay
+- [x] Full keyboard shortcut map with help overlay — *completed in Phase 2*
 - [ ] Accessibility audit (WCAG 2.1 AA)
 
 ## Tech Stack

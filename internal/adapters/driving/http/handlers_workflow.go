@@ -162,7 +162,11 @@ func handleNodeConfig(svc driving.WorkflowService) http.HandlerFunc {
 			return
 		}
 
-		partials.ConfigPanel(node).Render(r.Context(), w)
+		data := partials.ConfigPanelData{
+			WorkflowID: workflowID,
+			Node:       node,
+		}
+		partials.ConfigPanel(data).Render(r.Context(), w)
 	}
 }
 

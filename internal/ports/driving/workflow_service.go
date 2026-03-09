@@ -11,6 +11,7 @@ type CommandResult struct {
 	AffectedEdgeIDs []string
 	CanUndo         bool
 	CanRedo         bool
+	Workflow        *domain.Workflow // current workflow state after command
 }
 
 type WorkflowService interface {

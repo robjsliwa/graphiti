@@ -65,7 +65,12 @@ func (s *WorkflowService) CreateWorkflow(ctx context.Context, name, description,
 }
 
 func (s *WorkflowService) GetWorkflow(ctx context.Context, id string) (*domain.Workflow, error) {
-	return s.repo.GetByID(ctx, id)
+	wf, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	s.resolveDefinitions(ctx, wf)
+	return wf, nil
 }
 
 func (s *WorkflowService) ListWorkflows(ctx context.Context, userID string) ([]*domain.WorkflowSummary, error) {
@@ -100,8 +105,9 @@ func (s *WorkflowService) ExecuteCommand(ctx context.Context, workflowID string,
 	}
 
 	return &driving.CommandResult{
-		CanUndo: session.history.CanUndo(),
-		CanRedo: session.history.CanRedo(),
+		CanUndo:  session.history.CanUndo(),
+		CanRedo:  session.history.CanRedo(),
+		Workflow: session.workflow,
 	}, nil
 }
 
@@ -121,8 +127,9 @@ func (s *WorkflowService) Undo(ctx context.Context, workflowID string) (*driving
 	}
 
 	return &driving.CommandResult{
-		CanUndo: session.history.CanUndo(),
-		CanRedo: session.history.CanRedo(),
+		CanUndo:  session.history.CanUndo(),
+		CanRedo:  session.history.CanRedo(),
+		Workflow: session.workflow,
 	}, nil
 }
 
@@ -142,8 +149,9 @@ func (s *WorkflowService) Redo(ctx context.Context, workflowID string) (*driving
 	}
 
 	return &driving.CommandResult{
-		CanUndo: session.history.CanUndo(),
-		CanRedo: session.history.CanRedo(),
+		CanUndo:  session.history.CanUndo(),
+		CanRedo:  session.history.CanRedo(),
+		Workflow: session.workflow,
 	}, nil
 }
 
@@ -284,6 +292,8 @@ func (s *WorkflowService) getOrLoadSession(ctx context.Context, workflowID strin
 		return nil, err
 	}
 
+	s.resolveDefinitions(ctx, wf)
+
 	session = &workflowSession{
 		workflow: wf,
 		history:  domain.NewCommandHistory(s.maxUndo),
@@ -294,6 +304,16 @@ func (s *WorkflowService) getOrLoadSession(ctx context.Context, workflowID strin
 	s.mu.Unlock()
 
 	return session, nil
+}
+
+// resolveDefinitions populates Definition pointers on nodes from the registry.
+func (s *WorkflowService) resolveDefinitions(ctx context.Context, wf *domain.Workflow) {
+	for i := range wf.Nodes {
+		if wf.Nodes[i].Definition == nil {
+			def, _ := s.nodeRegistry.GetByID(ctx, wf.Nodes[i].DefinitionID)
+			wf.Nodes[i].Definition = def
+		}
+	}
 }
 
 // pasteCommand is a thin wrapper used by PasteNodes in the service layer.
