@@ -83,9 +83,10 @@ type WorkflowInfo struct {
 
 // DeployResult is the outcome of a deploy operation.
 type DeployResult struct {
-	Success bool
-	RunID   string
-	Message string
+	Success          bool
+	RunID            string
+	Message          string
+	ValidationErrors []ValidationError
 }
 
 var (

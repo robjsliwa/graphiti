@@ -41,19 +41,32 @@ templ Dashboard(data DashboardData) {
 					<div class="empty-state">
 						<h2>No workflows yet</h2>
 						<p>Create your first workflow to get started.</p>
+						<form method="POST" action="/workflows" hx-post="/workflows" hx-swap="none" style="margin-top:16px">
+							<input type="hidden" name="name" value="Untitled Workflow"/>
+							<button type="submit" class="btn btn-primary btn-lg">Create your first workflow</button>
+						</form>
 					</div>
 				}
 				for _, wf := range data.Workflows {
-					<a href={ templ.SafeURL("/workflows/" + wf.ID) } class="workflow-card">
-						<div class="workflow-card-header">
-							<h3>{ wf.Name }</h3>
-							<span class={ "badge", badgeClass(wf.Status) }>{ string(wf.Status) }</span>
-						</div>
-						<div class="workflow-card-meta">
-							<span>v{ itoa(wf.Version) }</span>
-							<span>{ wf.UpdatedAt.Format("Jan 2, 2006 15:04") }</span>
-						</div>
-					</a>
+					<div class="workflow-card-wrapper">
+						<a href={ templ.SafeURL("/workflows/" + wf.ID) } class="workflow-card">
+							<div class="workflow-card-header">
+								<h3>{ wf.Name }</h3>
+								<span class={ "badge", badgeClass(wf.Status) }>{ string(wf.Status) }</span>
+							</div>
+							<div class="workflow-card-meta">
+								<span>v{ itoa(wf.Version) }</span>
+								<span>{ wf.UpdatedAt.Format("Jan 2, 2006 15:04") }</span>
+							</div>
+						</a>
+						<button
+							class="btn btn-ghost btn-sm workflow-delete"
+							hx-delete={ "/workflows/" + wf.ID }
+							hx-confirm="Delete this workflow? This cannot be undone."
+							hx-swap="none"
+							title="Delete workflow"
+						>&#x2715;</button>
+					</div>
 				}
 			</div>
 		</main>

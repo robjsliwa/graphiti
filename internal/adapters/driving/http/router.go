@@ -52,6 +52,11 @@ func NewRouter(deps RouterDeps) http.Handler {
 	protected.HandleFunc("POST /api/workflows/{id}/clipboard/copy", handleClipboardCopy(deps.WorkflowSvc))
 	protected.HandleFunc("POST /api/workflows/{id}/clipboard/paste", handleClipboardPaste(deps.WorkflowSvc))
 
+	// Deploy and export
+	protected.HandleFunc("POST /api/workflows/{id}/deploy", handleDeploy(deps.WorkflowSvc))
+	protected.HandleFunc("GET /api/workflows/{id}/export", handleExport(deps.WorkflowSvc))
+	protected.HandleFunc("GET /api/workflows/{id}/versions", handleVersionHistory(deps.WorkflowSvc))
+
 	mux.Handle("/", AuthMiddleware(deps.SessionStore, deps.UserRepo)(protected))
 
 	return mux

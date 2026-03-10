@@ -85,6 +85,13 @@ func (r *WorkflowRepo) Delete(_ context.Context, id string) error {
 	return nil
 }
 
+func (r *WorkflowRepo) CreateVersion(_ context.Context, v *domain.WorkflowVersion) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.versions[v.WorkflowID] = append(r.versions[v.WorkflowID], v)
+	return nil
+}
+
 func (r *WorkflowRepo) GetVersionHistory(_ context.Context, id string) ([]*domain.WorkflowVersion, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

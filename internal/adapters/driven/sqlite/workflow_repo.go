@@ -302,5 +302,19 @@ func (r *WorkflowRepository) GetVersionHistory(ctx context.Context, id string) (
 	return versions, nil
 }
 
+// CreateVersion inserts a new workflow version snapshot.
+func (r *WorkflowRepository) CreateVersion(ctx context.Context, v *domain.WorkflowVersion) error {
+	_, err := r.db.ExecContext(ctx,
+		`INSERT INTO workflow_versions (id, workflow_id, version, definition, deployed_at, deployed_by, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		v.ID, v.WorkflowID, v.Version, string(v.Definition),
+		v.DeployedAt.UTC(), v.DeployedBy, v.CreatedAt.UTC(),
+	)
+	if err != nil {
+		return fmt.Errorf("insert workflow version: %w", err)
+	}
+	return nil
+}
+
 // Ensure WorkflowRepository implements driven.WorkflowRepository.
 var _ driven.WorkflowRepository = (*WorkflowRepository)(nil)

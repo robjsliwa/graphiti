@@ -10,6 +10,8 @@ import (
 	"graphiti/internal/domain"
 	"graphiti/internal/ports/driven"
 	"graphiti/internal/ports/driving"
+
+	"gopkg.in/yaml.v3"
 )
 
 // workflowSession holds an in-memory workflow and its command history.
@@ -215,8 +217,9 @@ func (s *WorkflowService) DeployWorkflow(ctx context.Context, workflowID, target
 	errs := session.workflow.Validate()
 	if len(errs) > 0 {
 		return &domain.DeployResult{
-			Success: false,
-			Message: fmt.Sprintf("validation failed with %d errors", len(errs)),
+			Success:          false,
+			Message:          fmt.Sprintf("validation failed with %d errors", len(errs)),
+			ValidationErrors: errs,
 		}, nil
 	}
 
@@ -258,6 +261,21 @@ func (s *WorkflowService) DeployWorkflow(ctx context.Context, workflowID, target
 		return nil, err
 	}
 
+	// Create version snapshot before incrementing
+	versionRecord := &domain.WorkflowVersion{
+		ID:         generateID(),
+		WorkflowID: session.workflow.ID,
+		Version:    session.workflow.Version,
+		Definition: defJSON,
+		DeployedAt: time.Now(),
+		DeployedBy: userID,
+		CreatedAt:  time.Now(),
+	}
+	if err := s.repo.CreateVersion(ctx, versionRecord); err != nil {
+		// Log but don't fail the deploy
+		_ = err
+	}
+
 	// Increment version on successful deploy
 	session.workflow.Version++
 	session.workflow.Status = domain.WorkflowStatusDeployed
@@ -272,11 +290,84 @@ func (s *WorkflowService) ExportWorkflow(ctx context.Context, workflowID, format
 		return nil, err
 	}
 
-	data, err := json.MarshalIndent(session.workflow, "", "  ")
-	if err != nil {
-		return nil, err
+	export := exportData{
+		APIVersion: "graphiti/v1",
+		Kind:       "Workflow",
+		Metadata: exportMetadata{
+			ID:          session.workflow.ID,
+			Name:        session.workflow.Name,
+			Description: session.workflow.Description,
+			Version:     session.workflow.Version,
+			Status:      string(session.workflow.Status),
+		},
+		Nodes: make([]exportNode, 0, len(session.workflow.Nodes)),
+		Edges: make([]exportEdge, 0, len(session.workflow.Edges)),
 	}
-	return data, nil
+	for _, n := range session.workflow.Nodes {
+		export.Nodes = append(export.Nodes, exportNode{
+			ID:           n.ID,
+			DefinitionID: n.DefinitionID,
+			Label:        n.Label,
+			X:            n.X,
+			Y:            n.Y,
+			Attributes:   n.AttributeValues,
+		})
+	}
+	for _, e := range session.workflow.Edges {
+		export.Edges = append(export.Edges, exportEdge{
+			ID:           e.ID,
+			SourceNodeID: e.SourceNodeID,
+			SourcePortID: e.SourcePortID,
+			TargetNodeID: e.TargetNodeID,
+			TargetPortID: e.TargetPortID,
+		})
+	}
+
+	switch format {
+	case "yaml":
+		return yaml.Marshal(export)
+	default:
+		return json.MarshalIndent(export, "", "  ")
+	}
+}
+
+// GetVersionHistory returns all version snapshots for a workflow.
+func (s *WorkflowService) GetVersionHistory(ctx context.Context, workflowID string) ([]*domain.WorkflowVersion, error) {
+	return s.repo.GetVersionHistory(ctx, workflowID)
+}
+
+// exportData is the structure for workflow export.
+type exportData struct {
+	APIVersion string         `json:"apiVersion" yaml:"apiVersion"`
+	Kind       string         `json:"kind" yaml:"kind"`
+	Metadata   exportMetadata `json:"metadata" yaml:"metadata"`
+	Nodes      []exportNode   `json:"nodes" yaml:"nodes"`
+	Edges      []exportEdge   `json:"edges" yaml:"edges"`
+}
+
+type exportMetadata struct {
+	ID          string `json:"id" yaml:"id"`
+	Name        string `json:"name" yaml:"name"`
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	Version     int    `json:"version" yaml:"version"`
+	Status      string `json:"status" yaml:"status"`
+}
+
+type exportNode struct {
+	ID           string         `json:"id" yaml:"id"`
+	DefinitionID string         `json:"definitionId" yaml:"definitionId"`
+	Label        string         `json:"label" yaml:"label"`
+	X            float64        `json:"x" yaml:"x"`
+	Y            float64        `json:"y" yaml:"y"`
+	Attributes   map[string]any `json:"attributes,omitempty" yaml:"attributes,omitempty"`
+}
+
+type exportEdge struct {
+	ID           string `json:"id" yaml:"id"`
+	SourceNodeID string `json:"sourceNodeId" yaml:"sourceNodeId"`
+	SourcePortID string `json:"sourcePortId" yaml:"sourcePortId"`
+	TargetNodeID string `json:"targetNodeId" yaml:"targetNodeId"`
+	TargetPortID string `json:"targetPortId" yaml:"targetPortId"`
 }
 
 func (s *WorkflowService) getOrLoadSession(ctx context.Context, workflowID string) (*workflowSession, error) {

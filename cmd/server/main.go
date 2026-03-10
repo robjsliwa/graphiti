@@ -14,6 +14,7 @@ import (
 	"graphiti/internal/adapters/driven/filesystem"
 	"graphiti/internal/adapters/driven/memory"
 	"graphiti/internal/adapters/driven/sqlite"
+	"graphiti/internal/adapters/driven/webhook"
 	"graphiti/internal/adapters/driving/cli"
 	httpAdapter "graphiti/internal/adapters/driving/http"
 	"graphiti/internal/app"
@@ -71,6 +72,21 @@ func main() {
 	}
 
 	workflowSvc := app.NewWorkflowService(workflowRepo, nodeRegistry, cfg.CommandHistory.MaxUndoDepth)
+
+	// Wire deploy targets from config
+	if cfg.Deploy.DefaultTarget != "" {
+		targetCfg, ok := cfg.Deploy.Targets[cfg.Deploy.DefaultTarget]
+		if ok && targetCfg.WebhookURL != "" {
+			deployTarget := webhook.NewWebhookDeployTarget(webhook.Config{
+				URL:        targetCfg.WebhookURL,
+				HMACSecret: cfg.Deploy.HMACSecret,
+				Timeout:    targetCfg.Timeout,
+				MaxRetries: targetCfg.Retries,
+			})
+			workflowSvc.SetDeployTarget(deployTarget)
+			slog.Info("deploy target configured", "target", cfg.Deploy.DefaultTarget, "url", targetCfg.WebhookURL)
+		}
+	}
 
 	// Session store
 	sessionMaxAge := time.Duration(cfg.Auth.Session.MaxAge) * time.Second

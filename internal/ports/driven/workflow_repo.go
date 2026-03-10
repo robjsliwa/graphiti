@@ -17,5 +17,6 @@ type WorkflowRepository interface {
 	List(ctx context.Context, filter WorkflowFilter) ([]*domain.WorkflowSummary, error)
 	Update(ctx context.Context, wf *domain.Workflow) error
 	Delete(ctx context.Context, id string) error
+	CreateVersion(ctx context.Context, v *domain.WorkflowVersion) error
 	GetVersionHistory(ctx context.Context, id string) ([]*domain.WorkflowVersion, error)
 }

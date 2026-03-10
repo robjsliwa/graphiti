@@ -27,8 +27,21 @@ templ Builder(data BuilderData) {
 				<a href="/">Workflows</a> / { data.Workflow.Name }
 			</div>
 			<div class="nav-actions">
+				<span class="version-badge">v{ itoa(data.Workflow.Version) }</span>
 				<button class="btn btn-icon" id="theme-toggle" title="Toggle theme">&#x263E;</button>
-				<button class="btn btn-success" id="deploy-btn" disabled>Deploy</button>
+				<div class="deploy-dropdown">
+					<button class="btn btn-success" id="deploy-btn">Deploy</button>
+					<button class="btn btn-success deploy-chevron" id="deploy-chevron" title="Deploy options">&#x25BE;</button>
+					<div class="deploy-menu" id="deploy-menu" hidden>
+						<button class="deploy-menu-item" data-action="deploy" data-target="production">Deploy to Production</button>
+						<button class="deploy-menu-item" data-action="deploy" data-target="staging">Deploy to Staging</button>
+						<hr/>
+						<button class="deploy-menu-item" data-action="save-draft">Save as Draft</button>
+						<hr/>
+						<button class="deploy-menu-item" data-action="export" data-format="yaml">Export as YAML</button>
+						<button class="deploy-menu-item" data-action="export" data-format="json">Export as JSON</button>
+					</div>
+				</div>
 				<span class="nav-user">{ data.Username }</span>
 			</div>
 		</nav>

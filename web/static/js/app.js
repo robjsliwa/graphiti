@@ -5,6 +5,7 @@ import { DragManager } from './drag.js';
 import { ConnectManager } from './connect.js';
 import { SelectionManager } from './select.js';
 import { ClipboardManager } from './clipboard.js';
+import { DeployManager } from './deploy.js';
 import { toast } from './toast.js';
 
 // Expose toast globally for use by any module
@@ -40,4 +41,8 @@ if (svg && wfId) {
   // Clipboard manager (copy, cut, paste, duplicate)
   const clipboard = new ClipboardManager(dispatcher);
   window.clipboardManager = clipboard;
+
+  // Deploy manager (deploy, export, version menu)
+  const deploy = new DeployManager(wfId);
+  window.deployManager = deploy;
 }

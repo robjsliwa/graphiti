@@ -27,4 +27,5 @@ type WorkflowService interface {
 	PasteNodes(ctx context.Context, workflowID string, payload *domain.ClipboardPayload, x, y float64) (*CommandResult, error)
 	DeployWorkflow(ctx context.Context, workflowID, target, userID string) (*domain.DeployResult, error)
 	ExportWorkflow(ctx context.Context, workflowID, format string) ([]byte, error)
+	GetVersionHistory(ctx context.Context, workflowID string) ([]*domain.WorkflowVersion, error)
 }

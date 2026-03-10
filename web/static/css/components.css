@@ -81,6 +81,26 @@
   font-size: 12px;
 }
 
+.workflow-card-wrapper {
+  position: relative;
+}
+.workflow-card-wrapper .workflow-delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  font-size: 12px;
+  color: var(--text-muted);
+  z-index: 1;
+}
+.workflow-card-wrapper:hover .workflow-delete {
+  opacity: 1;
+}
+.workflow-card-wrapper .workflow-delete:hover {
+  color: var(--red);
+}
+
 .empty-state {
   grid-column: 1 / -1;
   text-align: center;
@@ -88,6 +108,9 @@
   color: var(--text-muted);
 }
 .empty-state h2 { margin-bottom: 8px; color: var(--text); }
+
+.btn-lg { padding: 10px 24px; font-size: 15px; }
+.btn-sm { padding: 4px 8px; font-size: 12px; }
 
 .login-page {
   display: flex;
@@ -106,3 +129,78 @@
 }
 .login-card h1 { font-size: 32px; margin-bottom: 8px; }
 .login-card p { color: var(--text-muted); margin-bottom: 24px; }
+
+/* Version badge */
+.version-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+/* Deploy dropdown */
+.deploy-dropdown {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.deploy-dropdown .btn-success { border-radius: 6px 0 0 6px; }
+.deploy-chevron {
+  border-radius: 0 6px 6px 0 !important;
+  padding: 6px 8px;
+  border-left: 1px solid rgba(255,255,255,0.2);
+  font-size: 10px;
+}
+.deploy-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 200px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  padding: 4px 0;
+}
+.deploy-menu hr {
+  margin: 4px 0;
+  border: none;
+  border-top: 1px solid var(--border);
+}
+.deploy-menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  text-align: left;
+  font-size: 13px;
+  color: var(--text);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.deploy-menu-item:hover {
+  background: var(--surface-2);
+}
+
+/* Deploy button states */
+.btn.deploy-success {
+  background: var(--green) !important;
+  border-color: var(--green) !important;
+}
+.btn.deploy-error {
+  background: var(--red) !important;
+  border-color: var(--red) !important;
+}
+
+/* Node error highlight for validation failures */
+.node-error rect:first-child,
+.node-error polygon:first-child {
+  stroke: var(--red) !important;
+  stroke-width: 2px;
+}

@@ -287,14 +287,18 @@ See [`config/app.yaml`](config/app.yaml) for server, storage, and deploy setting
 - [x] Full workflow state sync after every command (server returns state, JS diffs SVG DOM)
 - [x] HTTP handler tests for all canvas endpoints (commands, undo/redo, clipboard, attributes)
 
-### Phase 3: Persistence & Deploy — Planned
+### Phase 3: Persistence & Deploy — **Complete**
 
-- [ ] Workflow CRUD with dashboard listing
-- [ ] Auto-save on every canvas mutation (debounced)
-- [ ] Pre-deploy validation with error highlighting
-- [ ] Webhook deploy with HMAC signing and retry
-- [ ] Export workflow as YAML/JSON
-- [ ] Workflow versioning on deploy
+- [x] Workflow CRUD with dashboard listing (create, open, delete with confirmation)
+- [x] Auto-save on every canvas mutation (saves to SQLite after each command)
+- [x] Pre-deploy validation with error highlighting (nodes highlighted red on failure)
+- [x] Webhook deploy adapter with HMAC-SHA256 signing and exponential backoff retry
+- [x] Deploy dropdown menu (Production, Staging, Save as Draft)
+- [x] Export workflow as YAML/JSON with file download
+- [x] Workflow versioning on deploy (version snapshots stored in `workflow_versions` table)
+- [x] Version badge displayed in builder nav bar
+- [x] Deploy/export HTTP handlers with tests
+- [x] SQLite `CreateVersion` repository method with cascade delete tests
 
 ### Phase 4: Auth & Execution View — Planned
 
