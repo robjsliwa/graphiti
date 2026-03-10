@@ -18,7 +18,7 @@ shape:
   minWidth: 160
   maxWidth: 320
   headerColor: "var(--node-processor)"
-  headerBackground: "var(--node-processor-dim)"
+  headerBackground: "var(--node-processor-bg)"
 
 ports:
   inputs:

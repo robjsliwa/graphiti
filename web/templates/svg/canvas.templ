@@ -52,6 +52,7 @@ templ Canvas(wf *domain.Workflow) {
 
 templ Node(node *domain.NodeInstance) {
 	<g
+		id={ "node-" + node.ID }
 		class="node"
 		data-node-id={ node.ID }
 		data-definition-id={ node.DefinitionID }

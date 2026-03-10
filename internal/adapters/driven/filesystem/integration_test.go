@@ -52,7 +52,7 @@ func TestLoadRealNodeDefinitions(t *testing.T) {
 		categories[d.Category.Group]++
 	}
 
-	expectedCategories := []string{"Sources", "Processing", "Destinations", "Control Flow"}
+	expectedCategories := []string{"Sources", "Processing", "Destinations", "Control"}
 	for _, cat := range expectedCategories {
 		if categories[cat] == 0 {
 			t.Errorf("no nodes in category %q", cat)

@@ -18,7 +18,7 @@ shape:
   minWidth: 180
   maxWidth: 320
   headerColor: "var(--node-source)"
-  headerBackground: "var(--node-source-dim)"
+  headerBackground: "var(--node-source-bg)"
 
 ports:
   inputs: []
@@ -81,7 +81,7 @@ attributes:
 validation:
   connectionRules:
     - outputPort: out-main
-      allowedTargetCategories: ["Processing", "Control Flow"]
+      allowedTargetCategories: ["Processing", "Control"]
       allowedTargetPorts: ["data"]
   attributeRules:
     - expression: "path.startsWith('/')"

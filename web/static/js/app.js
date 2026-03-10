@@ -50,4 +50,17 @@ if (svg && wfId) {
   // Execution manager (mode switching, WebSocket, status overlays)
   const execution = new ExecutionManager(wfId);
   window.executionManager = execution;
+
+  // Update node SVG when attributes are saved from config panel
+  document.body.addEventListener('nodeUpdated', (e) => {
+    const { nodeId, label, attributes } = e.detail;
+    const nodeEl = svg.querySelector(`[data-node-id="${nodeId}"]`);
+    if (!nodeEl) return;
+    const titleEl = nodeEl.querySelector('.node-title');
+    if (titleEl) titleEl.textContent = label;
+    const attrEls = nodeEl.querySelectorAll('.node-attr-label');
+    (attributes || []).forEach((attr, i) => {
+      if (attrEls[i]) attrEls[i].textContent = `${attr.label}: ${attr.value}`;
+    });
+  });
 }

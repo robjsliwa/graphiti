@@ -349,20 +349,149 @@ This starts three services:
 
 ### Building the ToDo API
 
-Once the stack is running:
+Once the stack is running, open `http://localhost:8080` (auto-authenticated in dev mode) and create a new workflow named "ToDo API". Then follow the steps below.
 
-1. Open `http://localhost:8080` (auto-authenticated in dev mode)
-2. Create a new workflow named "ToDo API"
-3. Build the workflow by dragging nodes from the palette:
-   - **API Gateway** (Sources) - set path to `/api/todos`
-   - **HTTP Router** (Control Flow) - routes by method
-   - **Validate Payload** (Processing) - validates POST/PUT bodies
-   - **PostgreSQL** (Destinations) - runs SQL queries
-   - **HTTP Response** (Destinations) - formats responses
-4. Wire the nodes together and configure each one
-5. Click **Deploy**
+#### Step 1: Add the API Gateway
 
-Or load the pre-built workflow from `examples/workflows/todo-api.json`.
+Drag **API Gateway** from the **Sources** category onto the canvas. Click on it to open the config panel, set these values, and press **Save**:
+
+| Field | Value |
+|---|---|
+| Path | `/api/todos` |
+| Allowed Methods | `ALL` |
+| Authentication | `none` |
+
+This is the entry point — every HTTP request to `/api/todos` enters the workflow here.
+
+#### Step 2: Add the HTTP Router
+
+Drag **HTTP Router** from the **Control** category to the right of the gateway. Configure it:
+
+| Field | Value |
+|---|---|
+| ID Path Parameter | `id` |
+
+Wire the API Gateway's **Request** output port to the HTTP Router's **Request** input port. The router inspects each request's HTTP method and sends it to the matching output port (GET, GET :id, POST, PUT, DELETE).
+
+#### Step 3: Add the "List Todos" branch (GET)
+
+Drag a **PostgreSQL** node from **Destinations**. Rename it to "List Todos" and configure:
+
+| Field | Value |
+|---|---|
+| Connection String | `${DATABASE_URL}` |
+| Operation | `query` |
+| SQL | `SELECT id, title, completed, created_at, updated_at FROM todos ORDER BY created_at DESC` |
+| Parameters | `[]` |
+
+Drag an **HTTP Response** node. Rename it to "200 OK (List)" and configure:
+
+| Field | Value |
+|---|---|
+| Status Code | `200` |
+| Content Type | `application/json` |
+
+Wire: **HTTP Router** `GET` → **List Todos** → **200 OK (List)**
+
+#### Step 4: Add the "Get Todo" branch (GET :id)
+
+Drag another **PostgreSQL** node. Rename it to "Get Todo" and configure:
+
+| Field | Value |
+|---|---|
+| Connection String | `${DATABASE_URL}` |
+| Operation | `query-row` |
+| SQL | `SELECT id, title, completed, created_at, updated_at FROM todos WHERE id = $1` |
+| Parameters | `["pathParams.id"]` |
+
+Drag another **HTTP Response** node. Rename it to "200 OK (Get)" with Status Code `200`.
+
+Wire: **HTTP Router** `GET :id` → **Get Todo** → **200 OK (Get)**
+
+#### Step 5: Add the "Create Todo" branch (POST)
+
+Drag a **Validate Payload** node from **Processing**. Rename it to "Validate Create" and configure:
+
+| Field | Value |
+|---|---|
+| Required Fields | `title` |
+| Field Types | `{"title": "string"}` |
+| Max Body Size | `256` |
+
+Drag a **PostgreSQL** node. Rename it to "Create Todo" and configure:
+
+| Field | Value |
+|---|---|
+| Connection String | `${DATABASE_URL}` |
+| Operation | `query-row` |
+| SQL | `INSERT INTO todos (title, completed) VALUES ($1, false) RETURNING id, title, completed, created_at, updated_at` |
+| Parameters | `["body.title"]` |
+
+Drag an **HTTP Response** node. Rename it to "201 Created" with Status Code `201`.
+
+Wire: **HTTP Router** `POST` → **Validate Create** → **Create Todo** → **201 Created**
+
+#### Step 6: Add the "Update Todo" branch (PUT)
+
+Drag another **Validate Payload** node. Rename it to "Validate Update" and configure:
+
+| Field | Value |
+|---|---|
+| Required Fields | `title` |
+| Field Types | `{"title": "string", "completed": "boolean"}` |
+| Max Body Size | `256` |
+
+Drag a **PostgreSQL** node. Rename it to "Update Todo" and configure:
+
+| Field | Value |
+|---|---|
+| Connection String | `${DATABASE_URL}` |
+| Operation | `query-row` |
+| SQL | `UPDATE todos SET title = $1, completed = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING id, title, completed, created_at, updated_at` |
+| Parameters | `["body.title", "body.completed", "pathParams.id"]` |
+
+Drag an **HTTP Response** node. Rename it to "200 OK (Update)" with Status Code `200`.
+
+Wire: **HTTP Router** `PUT` → **Validate Update** → **Update Todo** → **200 OK (Update)**
+
+#### Step 7: Add the "Delete Todo" branch (DELETE)
+
+Drag a **PostgreSQL** node. Rename it to "Delete Todo" and configure:
+
+| Field | Value |
+|---|---|
+| Connection String | `${DATABASE_URL}` |
+| Operation | `exec` |
+| SQL | `DELETE FROM todos WHERE id = $1` |
+| Parameters | `["pathParams.id"]` |
+
+Drag an **HTTP Response** node. Rename it to "204 No Content" with Status Code `204`.
+
+Wire: **HTTP Router** `DELETE` → **Delete Todo** → **204 No Content**
+
+#### Step 8: Add validation error handling
+
+Drag one more **HTTP Response** node. Rename it to "400 Bad Request" with Status Code `400`.
+
+Wire both validators' **Invalid** error ports to this node:
+- **Validate Create** `Invalid` → **400 Bad Request**
+- **Validate Update** `Invalid` → **400 Bad Request**
+
+#### Step 9: Deploy
+
+Click **Deploy** in the toolbar. Graphiti signs the workflow definition with HMAC-SHA256 and sends it to the engine. You should see a success toast.
+
+#### Loading the pre-built workflow
+
+If you prefer to skip the manual build, a ready-made workflow JSON is included at `examples/workflows/todo-api.json`. Currently, the way to load it is to import it via the API:
+
+```bash
+curl -X POST http://localhost:8080/api/workflows \
+  -H "Content-Type: application/json" \
+  -d @examples/workflows/todo-api.json
+```
+
+Then refresh the dashboard and open the "ToDo REST API" workflow.
 
 ### Testing the API
 

@@ -191,7 +191,49 @@ func handleAttributeUpdate(svc driving.WorkflowService, registry driving.NodeReg
 			}
 		}
 
-		// Return empty 200 for HTMX (the form stays as-is)
+		// Re-fetch workflow to get updated node with new attribute values
+		wf, err = svc.GetWorkflow(r.Context(), workflowID)
+		if err != nil {
+			http.Error(w, "workflow not found", http.StatusInternalServerError)
+			return
+		}
+		updatedNode := wf.FindNode(nodeID)
+		if updatedNode == nil {
+			http.Error(w, "node not found", http.StatusInternalServerError)
+			return
+		}
+
+		// Build the attribute display data for the node body
+		// Only include attributes visible on the node (node-body or both)
+		type bodyAttr struct {
+			Label string `json:"label"`
+			Value string `json:"value"`
+		}
+		var attrs []bodyAttr
+		if updatedNode.Definition != nil {
+			for _, a := range updatedNode.Definition.Attributes {
+				if a.Display == domain.DisplayNodeBody || a.Display == domain.DisplayBoth {
+					val := ""
+					if v, ok := updatedNode.AttributeValues[a.ID]; ok && v != nil {
+						if s, ok := v.(string); ok {
+							val = s
+						}
+					}
+					attrs = append(attrs, bodyAttr{Label: a.Label, Value: val})
+				}
+			}
+		}
+
+		// Send HX-Trigger with updated node data so client JS can update the SVG
+		triggerData := map[string]any{
+			"nodeUpdated": map[string]any{
+				"nodeId":     nodeID,
+				"label":      updatedNode.Label,
+				"attributes": attrs,
+			},
+		}
+		triggerJSON, _ := json.Marshal(triggerData)
+		w.Header().Set("HX-Trigger", string(triggerJSON))
 		w.WriteHeader(http.StatusOK)
 	}
 }

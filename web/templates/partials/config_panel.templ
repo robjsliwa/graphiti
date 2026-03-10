@@ -18,24 +18,33 @@ templ ConfigPanel(data ConfigPanelData) {
 		<button class="tab-btn" disabled>YAML</button>
 	</div>
 	if data.Node.Definition != nil {
-		<div class="config-attributes">
-			for _, attr := range data.Node.Definition.Attributes {
-				if attr.Display == domain.DisplayConfigPanel || attr.Display == domain.DisplayBoth || attr.Display == "" {
-					<div class="config-field">
-						<label for={ "attr-" + attr.ID }>
-							{ attr.Label }
-							if attr.Required {
-								<span class="required">*</span>
+		<form
+			hx-patch={ "/api/workflows/" + data.WorkflowID + "/nodes/" + data.Node.ID + "/attributes" }
+			hx-swap="none"
+			autocomplete="off"
+		>
+			<div class="config-attributes">
+				for _, attr := range data.Node.Definition.Attributes {
+					if attr.Display == domain.DisplayConfigPanel || attr.Display == domain.DisplayBoth || attr.Display == domain.DisplayNodeBody || attr.Display == "" {
+						<div class="config-field">
+							<label for={ "attr-" + attr.ID }>
+								{ attr.Label }
+								if attr.Required {
+									<span class="required">*</span>
+								}
+							</label>
+							@renderAttributeInput(data, attr)
+							if attr.Hint != "" {
+								<span class="field-hint">{ attr.Hint }</span>
 							}
-						</label>
-						@renderAttributeInput(data, attr)
-						if attr.Hint != "" {
-							<span class="field-hint">{ attr.Hint }</span>
-						}
-					</div>
+						</div>
+					}
 				}
-			}
-		</div>
+			</div>
+			<div class="config-actions">
+				<button type="submit" class="btn btn-primary">Save</button>
+			</div>
+		</form>
 	}
 }
 
@@ -48,16 +57,12 @@ templ renderAttributeInput(data ConfigPanelData, attr domain.AttributeDefinition
 				name={ attr.ID }
 				value={ attrValueStr(data.Node.AttributeValues[attr.ID]) }
 				class="input"
-				hx-patch={ "/api/workflows/" + data.WorkflowID + "/nodes/" + data.Node.ID + "/attributes" }
-				hx-trigger="keyup changed delay:500ms"
 			/>
 		case domain.AttrTypeText:
 			<textarea
 				id={ "attr-" + attr.ID }
 				name={ attr.ID }
 				class="input"
-				hx-patch={ "/api/workflows/" + data.WorkflowID + "/nodes/" + data.Node.ID + "/attributes" }
-				hx-trigger="keyup changed delay:500ms"
 			>{ attrValueStr(data.Node.AttributeValues[attr.ID]) }</textarea>
 		case domain.AttrTypeNumber:
 			<input
@@ -66,8 +71,6 @@ templ renderAttributeInput(data ConfigPanelData, attr domain.AttributeDefinition
 				name={ attr.ID }
 				value={ attrValueStr(data.Node.AttributeValues[attr.ID]) }
 				class="input"
-				hx-patch={ "/api/workflows/" + data.WorkflowID + "/nodes/" + data.Node.ID + "/attributes" }
-				hx-trigger="change"
 			/>
 		case domain.AttrTypeBoolean:
 			<label class="toggle">
@@ -76,8 +79,6 @@ templ renderAttributeInput(data ConfigPanelData, attr domain.AttributeDefinition
 					id={ "attr-" + attr.ID }
 					name={ attr.ID }
 					checked?={ attrValueBool(data.Node.AttributeValues[attr.ID]) }
-					hx-patch={ "/api/workflows/" + data.WorkflowID + "/nodes/" + data.Node.ID + "/attributes" }
-					hx-trigger="change"
 				/>
 				<span class="toggle-slider"></span>
 			</label>
@@ -86,8 +87,6 @@ templ renderAttributeInput(data ConfigPanelData, attr domain.AttributeDefinition
 				id={ "attr-" + attr.ID }
 				name={ attr.ID }
 				class="input"
-				hx-patch={ "/api/workflows/" + data.WorkflowID + "/nodes/" + data.Node.ID + "/attributes" }
-				hx-trigger="change"
 			>
 				for _, opt := range attr.Options {
 					<option value={ opt } selected?={ attrValueStr(data.Node.AttributeValues[attr.ID]) == opt }>{ opt }</option>
@@ -100,8 +99,6 @@ templ renderAttributeInput(data ConfigPanelData, attr domain.AttributeDefinition
 				name={ attr.ID }
 				placeholder="Enter secret..."
 				class="input"
-				hx-patch={ "/api/workflows/" + data.WorkflowID + "/nodes/" + data.Node.ID + "/attributes" }
-				hx-trigger="keyup changed delay:500ms"
 			/>
 		default:
 			<input
@@ -110,8 +107,6 @@ templ renderAttributeInput(data ConfigPanelData, attr domain.AttributeDefinition
 				name={ attr.ID }
 				value={ attrValueStr(data.Node.AttributeValues[attr.ID]) }
 				class="input"
-				hx-patch={ "/api/workflows/" + data.WorkflowID + "/nodes/" + data.Node.ID + "/attributes" }
-				hx-trigger="keyup changed delay:500ms"
 			/>
 	}
 }

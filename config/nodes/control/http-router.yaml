@@ -9,7 +9,7 @@ metadata:
   icon: "R"
 
 category:
-  group: Control Flow
+  group: Control
   order: 10
 
 shape:
@@ -18,7 +18,7 @@ shape:
   minWidth: 160
   maxWidth: 280
   headerColor: "var(--node-control)"
-  headerBackground: "var(--node-control-dim)"
+  headerBackground: "var(--node-control-bg)"
 
 ports:
   inputs:
