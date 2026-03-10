@@ -51,11 +51,31 @@
   pointer-events: none;
 }
 
+/* Execution mode status overlays */
 @keyframes pulse {
   0%, 100% { stroke-opacity: 1; }
   50% { stroke-opacity: 0.4; }
 }
-.node.running .node-bg {
+.node.running .node-bg,
+.node-pulsing .node-bg {
   animation: pulse 1.5s ease-in-out infinite;
   stroke: var(--warning);
+  stroke-width: 2;
 }
+
+.exec-pending { stroke: var(--text-muted); }
+.exec-running { stroke: var(--warning); stroke-width: 2; }
+.exec-completed { stroke: var(--success); stroke-width: 2; }
+.exec-failed { stroke: var(--danger); stroke-width: 2; }
+.exec-skipped { stroke: var(--text-muted); stroke-dasharray: 4 4; }
+
+.exec-duration {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  fill: var(--text-muted);
+}
+
+/* Execution mode: disable canvas interactions */
+.execution-mode .node { cursor: default; pointer-events: none; }
+.execution-mode .port { cursor: default; pointer-events: none; }
+.execution-mode .edge { cursor: default; }

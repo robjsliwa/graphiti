@@ -33,6 +33,7 @@ func main() {
 	// Driven adapters: storage
 	var workflowRepo driven.WorkflowRepository
 	var userRepo driven.UserRepository
+	var execRepo driven.ExecutionRepository
 
 	switch cfg.Storage.Adapter {
 	case "sqlite":
@@ -45,10 +46,12 @@ func main() {
 		defer db.Close()
 		workflowRepo = sqlite.NewWorkflowRepository(db)
 		userRepo = sqlite.NewUserRepository(db)
+		execRepo = sqlite.NewExecutionRepository(db)
 	default:
 		slog.Info("using in-memory storage")
 		workflowRepo = memory.NewWorkflowRepo()
 		userRepo = memory.NewUserRepo()
+		execRepo = memory.NewExecutionRepository()
 	}
 
 	// Driven adapters: node definitions
@@ -58,10 +61,16 @@ func main() {
 	var authAdapter driven.AuthProvider
 	switch cfg.Auth.Provider {
 	case "github":
-		slog.Error("github auth not yet implemented, falling back to fake")
-		authAdapter = auth.NewFakeAuth()
+		authAdapter = auth.NewGitHubAuth(auth.GitHubConfig{
+			ClientID:     cfg.Auth.GitHub.ClientID,
+			ClientSecret: cfg.Auth.GitHub.ClientSecret,
+			Scopes:       cfg.Auth.GitHub.Scopes,
+			AllowedOrgs:  cfg.Auth.GitHub.AllowedOrgs,
+		})
+		slog.Info("using GitHub OAuth2 authentication")
 	default:
 		authAdapter = auth.NewFakeAuth()
+		slog.Info("using fake authentication (dev mode)")
 	}
 
 	// App services
@@ -72,6 +81,20 @@ func main() {
 	}
 
 	workflowSvc := app.NewWorkflowService(workflowRepo, nodeRegistry, cfg.CommandHistory.MaxUndoDepth)
+	execSvc := app.NewExecutionService(execRepo)
+
+	// WebSocket hub
+	wsHub := httpAdapter.NewWebSocketHub()
+
+	// Wire WebSocket notifier to execution service
+	execSvc.SetNotifier(func(workflowID string, cb app.ExecutionCallback) {
+		wsHub.BroadcastToWorkflow(workflowID, httpAdapter.WebSocketMessage{
+			Type:   "node_status",
+			RunID:  cb.RunID,
+			NodeID: cb.NodeID,
+			Status: cb.Status,
+		})
+	})
 
 	// Wire deploy targets from config
 	if cfg.Deploy.DefaultTarget != "" {
@@ -95,10 +118,13 @@ func main() {
 	// HTTP router
 	router := httpAdapter.NewRouter(httpAdapter.RouterDeps{
 		WorkflowSvc:  workflowSvc,
+		ExecutionSvc: execSvc,
 		NodeRegistry: nodeRegistry,
 		AuthProvider: authAdapter,
 		UserRepo:     userRepo,
 		SessionStore: sessionStore,
+		WSHub:        wsHub,
+		HMACSecret:   cfg.Deploy.HMACSecret,
 	})
 
 	// Start server

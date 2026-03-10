@@ -93,7 +93,7 @@ func Builder(data BuilderData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</span></div></nav><div class=\"builder-layout\"><aside class=\"panel panel-left\" id=\"palette-panel\"><div class=\"panel-header\"><h2>Components</h2><input type=\"search\" placeholder=\"Search nodes...\" class=\"search-input\" name=\"q\" hx-get=\"/api/nodes/search\" hx-trigger=\"keyup changed delay:200ms\" hx-target=\"#node-palette\"></div><div id=\"node-palette\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</span></div></nav><div class=\"mode-tabs\"><button class=\"mode-tab active\" id=\"mode-builder\" data-mode=\"builder\">Builder</button> <button class=\"mode-tab\" id=\"mode-execution\" data-mode=\"execution\">Execution</button></div><div class=\"builder-layout\"><aside class=\"panel panel-left\" id=\"palette-panel\"><div id=\"panel-left-builder\"><div class=\"panel-header\"><h2>Components</h2><input type=\"search\" placeholder=\"Search nodes...\" class=\"search-input\" name=\"q\" hx-get=\"/api/nodes/search\" hx-trigger=\"keyup changed delay:200ms\" hx-target=\"#node-palette\"></div><div id=\"node-palette\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -101,7 +101,20 @@ func Builder(data BuilderData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div></aside><main class=\"canvas-container\" id=\"canvas-container\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div></div><div id=\"panel-left-execution\" style=\"display:none\"><div class=\"panel-header\"><h2>Run History</h2></div><div id=\"execution-run-list\" hx-get=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var6 string
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs("/api/workflows/" + data.Workflow.ID + "/runs")
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 76, Col: 61}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" hx-trigger=\"load\" hx-swap=\"innerHTML\"><div class=\"loading\">Loading runs...</div></div></div></aside><main class=\"canvas-container\" id=\"canvas-container\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -109,20 +122,20 @@ func Builder(data BuilderData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"canvas-hud\"><div class=\"zoom-controls\"><button class=\"btn btn-icon\" id=\"zoom-out\" title=\"Zoom out\">-</button> <span id=\"zoom-level\">100%</span> <button class=\"btn btn-icon\" id=\"zoom-in\" title=\"Zoom in\">+</button> <button class=\"btn btn-icon\" id=\"zoom-fit\" title=\"Fit to view\">Fit</button></div><div class=\"undo-redo\"><button class=\"btn btn-icon\" id=\"undo-btn\" title=\"Undo (Ctrl+Z)\" disabled>&#x21A9;</button> <button class=\"btn btn-icon\" id=\"redo-btn\" title=\"Redo (Ctrl+Shift+Z)\" disabled>&#x21AA;</button></div></div></main><aside class=\"panel panel-right\" id=\"config-panel\"><div class=\"panel-header\"><h2>Configuration</h2></div><div class=\"panel-body\" id=\"config-content\"><div class=\"empty-config\"><p>Select a node to configure</p></div></div></aside></div><div id=\"graphiti-data\" data-workflow-id=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"canvas-hud\"><div class=\"zoom-controls\"><button class=\"btn btn-icon\" id=\"zoom-out\" title=\"Zoom out\">-</button> <span id=\"zoom-level\">100%</span> <button class=\"btn btn-icon\" id=\"zoom-in\" title=\"Zoom in\">+</button> <button class=\"btn btn-icon\" id=\"zoom-fit\" title=\"Fit to view\">Fit</button></div><div class=\"undo-redo\" id=\"undo-redo-controls\"><button class=\"btn btn-icon\" id=\"undo-btn\" title=\"Undo (Ctrl+Z)\" disabled>&#x21A9;</button> <button class=\"btn btn-icon\" id=\"redo-btn\" title=\"Redo (Ctrl+Shift+Z)\" disabled>&#x21AA;</button></div></div></main><aside class=\"panel panel-right\" id=\"config-panel\"><div class=\"panel-header\"><h2>Configuration</h2></div><div class=\"panel-body\" id=\"config-content\"><div class=\"empty-config\"><p>Select a node to configure</p></div></div></aside></div><div id=\"graphiti-data\" data-workflow-id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var6 string
-			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(data.Workflow.ID)
+			var templ_7745c5c3_Var7 string
+			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(data.Workflow.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 92, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 110, Col: 61}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" hidden></div><script src=\"/static/js/theme.js\"></script> <script type=\"module\" src=\"/static/js/app.js\"></script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" hidden></div><script src=\"/static/js/theme.js\"></script> <script type=\"module\" src=\"/static/js/app.js\"></script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

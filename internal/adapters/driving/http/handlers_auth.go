@@ -30,8 +30,8 @@ func handleLogin(auth driven.AuthProvider, sessions *SessionStore) http.HandlerF
 			return
 		}
 
-		// For real OAuth, show login page
-		pages.Login().Render(r.Context(), w)
+		// For real OAuth, show login page with GitHub button
+		pages.LoginWithProvider(pages.LoginData{Provider: "github"}).Render(r.Context(), w)
 	}
 }
 

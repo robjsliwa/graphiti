@@ -204,3 +204,121 @@
   stroke: var(--red) !important;
   stroke-width: 2px;
 }
+
+/* Mode tabs */
+.mode-tabs {
+  display: flex;
+  gap: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+}
+.mode-tab {
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.mode-tab:hover { color: var(--text); }
+.mode-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Login message */
+.login-message {
+  padding: 8px 16px;
+  margin-bottom: 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Execution run list */
+.run-entry {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.run-entry:hover { background: var(--surface-2); }
+.run-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.run-id { font-family: var(--font-mono, monospace); font-size: 12px; }
+.run-entry-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Execution details panel */
+.execution-details { padding: 16px; }
+.execution-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.execution-header h3 { font-size: 14px; }
+.execution-meta { margin-bottom: 16px; }
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 12px;
+}
+.meta-label { color: var(--text-muted); }
+
+.node-status-list { display: flex; flex-direction: column; gap: 8px; }
+.node-status-entry {
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border-radius: 6px;
+  border-left: 3px solid var(--border);
+}
+.node-completed { border-left-color: var(--success); }
+.node-failed { border-left-color: var(--danger); }
+.node-running { border-left-color: var(--warning); }
+.node-status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.node-status-id { font-family: var(--font-mono, monospace); font-size: 12px; }
+.node-error { color: var(--danger); font-size: 12px; margin-top: 4px; }
+
+.node-logs { margin-top: 8px; }
+.node-logs summary { cursor: pointer; font-size: 12px; color: var(--text-muted); }
+.log-entries { max-height: 200px; overflow-y: auto; margin-top: 4px; }
+.log-entry {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  font-family: var(--font-mono, monospace);
+  padding: 2px 0;
+}
+.log-time { color: var(--text-muted); }
+.log-level { font-weight: 600; min-width: 40px; }
+.log-info .log-level { color: var(--accent); }
+.log-warn .log-level { color: var(--warning); }
+.log-error .log-level { color: var(--danger); }
+
+.text-muted { color: var(--text-muted); }
+.loading { padding: 24px; text-align: center; color: var(--text-muted); }
+
+/* Badge variants */
+.badge-warning { background: var(--warning); color: #000; }
+.badge-danger { background: var(--danger); color: #fff; }
+.badge-sm { font-size: 10px; padding: 1px 6px; }

@@ -18,4 +18,5 @@ type ExecutionRepository interface {
 	ListByWorkflow(ctx context.Context, workflowID string, filter ExecutionFilter) ([]*domain.ExecutionRunSummary, error)
 	UpdateNodeStatus(ctx context.Context, runID, nodeID string, status domain.NodeExecutionStatus) error
 	AppendNodeLog(ctx context.Context, runID, nodeID string, entry domain.LogEntry) error
+	UpdateRunStatus(ctx context.Context, runID string, status domain.ExecutionStatus) error
 }

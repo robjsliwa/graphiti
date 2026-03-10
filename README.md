@@ -216,6 +216,90 @@ auth:
     clientSecret: "${GITHUB_CLIENT_SECRET}"
 ```
 
+### GitHub OAuth2 Setup
+
+To enable GitHub OAuth in production:
+
+1. Create a GitHub OAuth App at **Settings > Developer settings > OAuth Apps**
+2. Set the authorization callback URL to `https://your-domain.com/auth/callback`
+3. Configure your environment:
+
+```bash
+# .env
+GITHUB_CLIENT_ID=your-client-id
+GITHUB_CLIENT_SECRET=your-client-secret
+```
+
+4. Switch the auth provider in config:
+
+```yaml
+# config/auth.yaml
+auth:
+  provider: github
+  github:
+    clientId: "${GITHUB_CLIENT_ID}"
+    clientSecret: "${GITHUB_CLIENT_SECRET}"
+    scopes: ["read:user", "read:org"]
+    allowedOrgs: ["your-org"]    # Optional: restrict access to org members
+```
+
+When `allowedOrgs` is set, only members of those GitHub organizations can log in.
+
+### Execution Mode
+
+Graphiti has two UI modes, toggled via tabs below the nav bar:
+
+- **Builder** — Design and edit workflows (default)
+- **Execution** — Monitor workflow runs in real time
+
+In execution mode, the canvas becomes read-only and shows live status overlays on nodes:
+- Pending (gray), Running (yellow pulse), Completed (green), Failed (red), Skipped (dashed gray)
+
+The left panel switches from the node palette to a run history list.
+
+### Execution Callback Endpoint
+
+Your execution engine reports status updates back to Graphiti via:
+
+```
+POST /api/callbacks/execution
+X-Graphiti-Signature: sha256=<HMAC-SHA256 hex digest>
+Content-Type: application/json
+
+{
+  "apiVersion": "graphiti/v1",
+  "event": "node.status",
+  "runID": "run-abc123",
+  "workflowID": "wf-001",
+  "nodeID": "node-transcribe-1",
+  "status": "completed",
+  "startedAt": "2026-03-10T14:30:00Z",
+  "completedAt": "2026-03-10T14:30:05Z"
+}
+```
+
+The signature is verified using the same `DEPLOY_HMAC_SECRET` from your `.env`. If the run doesn't exist yet, Graphiti creates it automatically on the first callback.
+
+### WebSocket Live Updates
+
+When in execution mode, the browser connects via WebSocket to receive real-time node status updates:
+
+```
+ws://localhost:8080/api/ws/workflows/{workflowID}
+```
+
+The server broadcasts status changes to all connected clients for that workflow, enabling live collaboration and monitoring.
+
+### CSRF Protection
+
+All state-mutating requests (POST, PUT, PATCH, DELETE) require a CSRF token. The server sets a `csrf_token` cookie on every response. Include the token in your requests:
+
+```
+X-CSRF-Token: <value from csrf_token cookie>
+```
+
+GET and HEAD requests are exempt. Auth callback routes are also exempt.
+
 ### Themes
 
 Light and dark themes are defined via CSS custom properties. The UI respects `data-theme` on `<html>`:
@@ -300,14 +384,14 @@ See [`config/app.yaml`](config/app.yaml) for server, storage, and deploy setting
 - [x] Deploy/export HTTP handlers with tests
 - [x] SQLite `CreateVersion` repository method with cascade delete tests
 
-### Phase 4: Auth & Execution View — Planned
+### Phase 4: Auth & Execution View — **Complete**
 
-- [ ] GitHub OAuth2 adapter
-- [ ] Production session management with CSRF protection
-- [ ] Execution mode with run history
-- [ ] Per-node status overlays (running, completed, failed)
-- [ ] Execution callback endpoint for engine status updates
-- [ ] WebSocket for live execution updates
+- [x] GitHub OAuth2 adapter with org membership verification
+- [x] Production session management with CSRF protection and rate limiting
+- [x] Execution mode with run history (builder/execution mode tabs)
+- [x] Per-node status overlays (pending, running, completed, failed, skipped)
+- [x] Execution callback endpoint for engine status updates (HMAC-authenticated)
+- [x] WebSocket for live execution updates (raw HTTP hijack, no external deps)
 
 ### Phase 5: Advanced Features — Planned
 

@@ -6,6 +6,7 @@ import { ConnectManager } from './connect.js';
 import { SelectionManager } from './select.js';
 import { ClipboardManager } from './clipboard.js';
 import { DeployManager } from './deploy.js';
+import { ExecutionManager } from './execution.js';
 import { toast } from './toast.js';
 
 // Expose toast globally for use by any module
@@ -45,4 +46,8 @@ if (svg && wfId) {
   // Deploy manager (deploy, export, version menu)
   const deploy = new DeployManager(wfId);
   window.deployManager = deploy;
+
+  // Execution manager (mode switching, WebSocket, status overlays)
+  const execution = new ExecutionManager(wfId);
+  window.executionManager = execution;
 }

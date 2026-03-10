@@ -1917,6 +1917,1806 @@ func (h *WebSocketHub) BroadcastToWorkflow(workflowID string, msg WebSocketMessa
 
 **Phase 4 Demo Checkpoint:** Go to `localhost:8080`. You see a login page. Click "Login with GitHub." Complete the OAuth flow. You're on the dashboard. Open a workflow. Deploy it. Switch to Execution mode. Use a curl command to simulate the engine sending status callbacks. Watch nodes light up in real-time, first amber (running) with a pulse, then green (completed) or red (failed). Click a node to see its execution details.
 
+## Phase 4.5: Sample Execution Engine and Developer Guide
+
+**Goal:** Build a working execution engine that turns Graphiti from a visual editor into a live system. The engine receives deployed workflows via webhook, executes nodes in topological order, reports status back to Graphiti in real-time, and actually processes HTTP requests through a Postgres-backed ToDo API. Ship it with docker-compose so anyone can run the entire stack with one command. Write a developer guide that teaches others how to build their own engine.
+
+At demo time, you docker-compose up, open Graphiti, build the ToDo workflow from scratch (or load the pre-built one), deploy it, and then use curl to create, read, update, and delete ToDo items. Every request flows through the workflow visibly, with nodes lighting up in execution mode as data passes through them.
+
+**Estimated Duration:** 3-4 weeks
+
+**Depends on:** Phase 4 (execution mode UI, WebSocket, status callbacks)
+
+```mermaid
+graph LR
+    A["New Node<br/>Definitions"] --> B["Sample Engine<br/>Core"]
+    B --> C["Node Executors<br/>(API, PG, etc.)"]
+    C --> D["ToDo Workflow<br/>Definition"]
+    D --> E["Docker Compose<br/>Full Stack"]
+    E --> F["Developer Guide<br/>Documentation"]
+    style F fill:#10B981,color:#fff
+```
+
+### The Big Picture
+
+Here's what the full running stack looks like. Graphiti is the UI. The sample engine is the runtime. Postgres is where data lives. All three are independent services that communicate over HTTP and SQL.
+
+```mermaid
+graph TB
+    subgraph "Browser"
+        UI["Graphiti UI<br/>localhost:8080"]
+    end
+
+    subgraph "Docker Network"
+        G["Graphiti Server<br/>:8080"]
+        E["Sample Engine<br/>:9090"]
+        PG["PostgreSQL<br/>:5432"]
+    end
+
+    subgraph "External"
+        CURL["curl / Postman<br/>API Client"]
+    end
+
+    UI -->|"HTMX, WebSocket"| G
+    G -->|"Deploy webhook<br/>(workflow definition)"| E
+    E -->|"Status callbacks<br/>(node execution updates)"| G
+    G -->|"WebSocket push"| UI
+    E -->|"SQL queries<br/>(from PostgreSQL nodes)"| PG
+    CURL -->|"HTTP requests<br/>POST /api/todos"| E
+    E -->|"HTTP responses<br/>201 Created"| CURL
+```
+
+The flow when someone sends a curl request to the ToDo API:
+
+```mermaid
+sequenceDiagram
+    participant C as curl
+    participant E as Sample Engine
+    participant PG as PostgreSQL
+    participant G as Graphiti Server
+    participant B as Browser (Execution Mode)
+
+    C->>E: POST /api/todos {"title": "Buy milk"}
+    E->>G: callback: API Gateway node → running
+    G->>B: WebSocket: node status update
+    E->>G: callback: API Gateway node → completed
+    E->>G: callback: HTTP Router node → running
+    E->>G: callback: HTTP Router node → completed (route: POST)
+    E->>G: callback: Validate Payload node → running
+    E->>G: callback: Validate Payload node → completed
+    E->>G: callback: PostgreSQL Insert node → running
+    E->>PG: INSERT INTO todos (title, completed) VALUES ('Buy milk', false)
+    PG->>E: {id: 1, title: "Buy milk", completed: false}
+    E->>G: callback: PostgreSQL Insert node → completed
+    E->>G: callback: HTTP Response node → running
+    E->>G: callback: HTTP Response node → completed
+    E->>C: 201 Created {"id": 1, "title": "Buy milk", "completed": false}
+    Note over B: All nodes visibly light up<br/>in sequence during execution
+```
+
+### The ToDo Workflow
+
+This is the workflow users build (or load from the pre-built example) to create a full CRUD REST API backed by Postgres. It uses every category of node: sources, processing, control flow, and destinations.
+
+```mermaid
+graph TD
+    API["🌐 API Gateway<br/><i>Source</i><br/>Path: /api/todos/*"]
+
+    ROUTER{"🔀 HTTP Router<br/><i>Control Flow</i>"}
+
+    VAL_POST["✅ Validate Payload<br/><i>Processing</i><br/>Required: title"]
+    VAL_PUT["✅ Validate Payload<br/><i>Processing</i><br/>Required: title, completed"]
+
+    PG_LIST["🐘 PostgreSQL<br/><i>Destination</i><br/>SELECT * FROM todos"]
+    PG_GET["🐘 PostgreSQL<br/><i>Destination</i><br/>SELECT * FROM todos WHERE id = $1"]
+    PG_INSERT["🐘 PostgreSQL<br/><i>Destination</i><br/>INSERT INTO todos ..."]
+    PG_UPDATE["🐘 PostgreSQL<br/><i>Destination</i><br/>UPDATE todos SET ... WHERE id = $1"]
+    PG_DELETE["🐘 PostgreSQL<br/><i>Destination</i><br/>DELETE FROM todos WHERE id = $1"]
+
+    RES_LIST["📤 HTTP Response<br/><i>Destination</i><br/>200 OK"]
+    RES_GET["📤 HTTP Response<br/><i>Destination</i><br/>200 OK"]
+    RES_CREATE["📤 HTTP Response<br/><i>Destination</i><br/>201 Created"]
+    RES_UPDATE["📤 HTTP Response<br/><i>Destination</i><br/>200 OK"]
+    RES_DELETE["📤 HTTP Response<br/><i>Destination</i><br/>204 No Content"]
+    RES_ERR["📤 HTTP Response<br/><i>Destination</i><br/>400 Bad Request"]
+
+    API -->|"data"| ROUTER
+    ROUTER -->|"GET (no id)"| PG_LIST
+    ROUTER -->|"GET (with id)"| PG_GET
+    ROUTER -->|"POST"| VAL_POST
+    ROUTER -->|"PUT"| VAL_PUT
+    ROUTER -->|"DELETE"| PG_DELETE
+
+    VAL_POST -->|"valid"| PG_INSERT
+    VAL_POST -->|"error"| RES_ERR
+    VAL_PUT -->|"valid"| PG_UPDATE
+    VAL_PUT -->|"error"| RES_ERR
+
+    PG_LIST --> RES_LIST
+    PG_GET --> RES_GET
+    PG_INSERT --> RES_CREATE
+    PG_UPDATE --> RES_UPDATE
+    PG_DELETE --> RES_DELETE
+```
+
+This single workflow exercises:
+- **Source node** with configurable path, methods, and optional auth
+- **Control flow** (diamond shape) with multiple conditional output ports
+- **Processing** nodes for validation with error output ports
+- **Destination** nodes for both database operations and HTTP responses
+- **Error paths** that route validation failures to error responses
+- **Multiple port types** (data ports for the main flow, error ports for failures)
+
+### New Node Definitions
+
+These YAML definitions ship in `config/nodes/` alongside the existing ones. They're what make the ToDo workflow possible, but they're generic enough to build any HTTP-to-database workflow.
+
+#### Story 4.5.1: API Gateway Node Definition
+
+**What:** A source node that represents an HTTP endpoint. The engine listens on the configured path and emits incoming requests as data. Think of it as a funnel, HTTP requests pour in at the top and structured data flows out the right side.
+
+**YAML definition:**
+
+```yaml
+# config/nodes/sources/api-gateway.yaml
+apiVersion: graphiti/v1
+kind: NodeDefinition
+
+metadata:
+  id: source-api-gateway
+  name: API Gateway
+  description: "Receives HTTP requests on a configurable endpoint"
+  version: "1.0.0"
+  icon: "🌐"
+
+category:
+  group: Sources
+  order: 10
+
+shape:
+  type: rounded-rect
+  width: 220
+  minWidth: 180
+  maxWidth: 320
+  headerColor: "var(--node-source)"
+  headerBackground: "var(--node-source-dim)"
+
+ports:
+  inputs: []
+  outputs:
+    - id: out-main
+      label: "Request"
+      type: data
+      position: right-center
+      maxConnections: 1
+
+attributes:
+  - id: path
+    label: "Path"
+    type: string
+    default: "/api/resource"
+    required: true
+    display: node-body
+    group: "Endpoint"
+    hint: "Supports path params like /api/todos/:id"
+
+  - id: methods
+    label: "Allowed Methods"
+    type: enum
+    options: ["ALL", "GET", "POST", "PUT", "DELETE", "PATCH"]
+    default: "ALL"
+    display: node-body
+    group: "Endpoint"
+
+  - id: auth_type
+    label: "Authentication"
+    type: enum
+    options: ["none", "api-key", "bearer-token", "basic"]
+    default: "none"
+    display: both
+    group: "Security"
+
+  - id: auth_secret
+    label: "Auth Secret / API Key"
+    type: secret
+    required: false
+    display: config-panel
+    group: "Security"
+    hint: "Use ${API_KEY} for env var reference"
+
+  - id: rate_limit
+    label: "Rate Limit (req/min)"
+    type: number
+    default: 0
+    min: 0
+    max: 10000
+    display: config-panel
+    group: "Security"
+    hint: "0 = unlimited"
+
+  - id: cors_origins
+    label: "CORS Origins"
+    type: string
+    default: "*"
+    display: config-panel
+    group: "Security"
+
+validation:
+  connectionRules:
+    - outputPort: out-main
+      allowedTargetCategories: ["Processing", "Control Flow"]
+      allowedTargetPorts: ["data"]
+  attributeRules:
+    - expression: "path.startsWith('/')"
+      message: "Path must start with /"
+```
+
+**The data the API Gateway node emits downstream:**
+
+```json
+{
+  "method": "POST",
+  "path": "/api/todos",
+  "pathParams": {},
+  "queryParams": {},
+  "headers": { "content-type": "application/json", "authorization": "Bearer ..." },
+  "body": { "title": "Buy milk", "completed": false },
+  "clientIp": "192.168.1.100",
+  "timestamp": "2026-03-10T14:30:00Z"
+}
+```
+
+**Acceptance Criteria:**
+
+- [ ] YAML file parses and validates correctly by the existing node loader
+- [ ] Node appears in the "Sources" category in the palette with the globe icon
+- [ ] Shape renders as a rounded-rect with left accent bar (source style)
+- [ ] Path and Allowed Methods display on the node body
+- [ ] Auth type shows on both node body and config panel
+- [ ] Secret field is write-only after save (never sent back to browser as plaintext)
+- [ ] Connection rules allow connecting only to Processing or Control Flow nodes
+- [ ] Path validation rule rejects paths that don't start with `/`
+
+#### Story 4.5.2: HTTP Method Router Node Definition
+
+**What:** A control flow node that examines the incoming HTTP method and routes data to the matching output port. It's a traffic cop: one road in, multiple roads out, and it reads the method sign to decide which way to send the car.
+
+```yaml
+# config/nodes/control/http-router.yaml
+apiVersion: graphiti/v1
+kind: NodeDefinition
+
+metadata:
+  id: control-http-router
+  name: HTTP Router
+  description: "Routes requests based on HTTP method and path pattern"
+  version: "1.0.0"
+  icon: "🔀"
+
+category:
+  group: Control Flow
+  order: 10
+
+shape:
+  type: diamond
+  width: 200
+  minWidth: 160
+  maxWidth: 280
+  headerColor: "var(--node-control)"
+  headerBackground: "var(--node-control-dim)"
+
+ports:
+  inputs:
+    - id: in-main
+      label: "Request"
+      type: data
+      position: left-center
+      maxConnections: 1
+  outputs:
+    - id: out-get
+      label: "GET"
+      type: data
+      position: right-top
+      maxConnections: 1
+    - id: out-get-by-id
+      label: "GET :id"
+      type: data
+      position: right-center
+      maxConnections: 1
+    - id: out-post
+      label: "POST"
+      type: data
+      position: right-bottom
+      maxConnections: 1
+    - id: out-put
+      label: "PUT"
+      type: data
+      position: bottom-center
+      maxConnections: 1
+    - id: out-delete
+      label: "DELETE"
+      type: data
+      position: bottom-center
+      maxConnections: 1
+    - id: out-unmatched
+      label: "No Match"
+      type: error
+      position: bottom-center
+      maxConnections: 1
+
+attributes:
+  - id: id_param
+    label: "ID Path Parameter"
+    type: string
+    default: "id"
+    display: config-panel
+    group: "Routing"
+    hint: "Name of the path parameter that distinguishes GET-all from GET-by-id"
+
+validation:
+  connectionRules:
+    - outputPort: out-get
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data"]
+    - outputPort: out-post
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data"]
+    - outputPort: out-put
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data"]
+    - outputPort: out-delete
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data"]
+    - outputPort: out-unmatched
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data", "error"]
+```
+
+**Acceptance Criteria:**
+
+- [ ] Renders as a diamond shape (control flow convention)
+- [ ] Shows 6 output ports: GET, GET :id, POST, PUT, DELETE, No Match
+- [ ] The "No Match" port uses the `error` port type
+- [ ] Connecting to the input requires a `data` type output port from the source
+- [ ] Each output port allows connecting to Processing or Destination nodes
+
+#### Story 4.5.3: Validate Payload Node Definition
+
+**What:** A processing node that checks incoming JSON against configurable rules. If the data passes, it flows out the main output. If it fails, it flows out the error port with a description of what went wrong.
+
+```yaml
+# config/nodes/processing/validate-payload.yaml
+apiVersion: graphiti/v1
+kind: NodeDefinition
+
+metadata:
+  id: processing-validate-payload
+  name: Validate Payload
+  description: "Validates request body fields against configurable rules"
+  version: "1.0.0"
+  icon: "✅"
+
+category:
+  group: Processing
+  order: 15
+
+shape:
+  type: rounded-rect
+  width: 200
+  minWidth: 160
+  maxWidth: 320
+  headerColor: "var(--node-processor)"
+  headerBackground: "var(--node-processor-dim)"
+
+ports:
+  inputs:
+    - id: in-main
+      label: "Input"
+      type: data
+      position: left-center
+      maxConnections: 1
+  outputs:
+    - id: out-main
+      label: "Valid"
+      type: data
+      position: right-center
+      maxConnections: 1
+    - id: out-error
+      label: "Invalid"
+      type: error
+      position: bottom-center
+      maxConnections: 1
+
+attributes:
+  - id: required_fields
+    label: "Required Fields"
+    type: string
+    default: ""
+    required: true
+    display: node-body
+    group: "Rules"
+    hint: "Comma-separated field names, e.g.: title,email"
+
+  - id: field_types
+    label: "Field Type Rules"
+    type: json
+    default: "{}"
+    display: config-panel
+    group: "Rules"
+    hint: '{"title": "string", "completed": "boolean", "priority": "number"}'
+
+  - id: max_body_size
+    label: "Max Body Size (KB)"
+    type: number
+    default: 256
+    min: 1
+    max: 10240
+    display: config-panel
+    group: "Limits"
+
+validation:
+  connectionRules:
+    - outputPort: out-main
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data"]
+    - outputPort: out-error
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data", "error"]
+```
+
+**Acceptance Criteria:**
+
+- [ ] Renders as a standard rounded rectangle (processing category)
+- [ ] Shows two output ports: "Valid" (data type) and "Invalid" (error type)
+- [ ] Required fields display on the node body
+- [ ] Field type rules are editable as JSON in the config panel
+- [ ] Connection rules allow the error port to connect to both data and error inputs
+
+#### Story 4.5.4: PostgreSQL Node Definition
+
+**What:** A destination node that runs a parameterized SQL query against a Postgres database. The user configures the connection string, the SQL template, and how parameters map from the incoming data.
+
+```yaml
+# config/nodes/destinations/postgresql.yaml
+apiVersion: graphiti/v1
+kind: NodeDefinition
+
+metadata:
+  id: destination-postgresql
+  name: PostgreSQL
+  description: "Executes a parameterized SQL query against a PostgreSQL database"
+  version: "1.0.0"
+  icon: "🐘"
+
+category:
+  group: Destinations
+  order: 20
+
+shape:
+  type: rounded-rect
+  width: 220
+  minWidth: 180
+  maxWidth: 360
+  headerColor: "var(--node-destination)"
+  headerBackground: "var(--node-destination-dim)"
+
+ports:
+  inputs:
+    - id: in-main
+      label: "Input"
+      type: data
+      position: left-center
+      maxConnections: 1
+  outputs:
+    - id: out-main
+      label: "Result"
+      type: data
+      position: right-center
+      maxConnections: 1
+    - id: out-error
+      label: "Error"
+      type: error
+      position: bottom-center
+      maxConnections: 1
+
+attributes:
+  - id: connection_string
+    label: "Connection String"
+    type: secret
+    required: true
+    display: config-panel
+    group: "Connection"
+    hint: "Use ${DATABASE_URL} for env var reference"
+
+  - id: operation
+    label: "Operation"
+    type: enum
+    options: ["query", "query-row", "exec"]
+    default: "query"
+    required: true
+    display: node-body
+    group: "Query"
+    hint: "query = multiple rows, query-row = single row, exec = INSERT/UPDATE/DELETE"
+
+  - id: sql
+    label: "SQL"
+    type: text
+    required: true
+    display: config-panel
+    group: "Query"
+    hint: "Use $1, $2, ... for parameters"
+
+  - id: params
+    label: "Parameter Mapping"
+    type: json
+    default: "[]"
+    display: config-panel
+    group: "Query"
+    hint: '["body.title", "body.completed", "pathParams.id"]'
+
+  - id: timeout_seconds
+    label: "Query Timeout (s)"
+    type: number
+    default: 30
+    min: 1
+    max: 300
+    display: config-panel
+    group: "Connection"
+
+validation:
+  connectionRules:
+    - outputPort: out-main
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data"]
+    - outputPort: out-error
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data", "error"]
+```
+
+**Acceptance Criteria:**
+
+- [ ] Renders as a rounded-rect with right accent bar (destination category)
+- [ ] Operation type is visible on the node body
+- [ ] Connection string uses the `secret` type (never echoed back to browser)
+- [ ] SQL attribute uses the `text` type for multi-line editing
+- [ ] Parameter mapping uses JSON to express which incoming data fields map to $1, $2, etc.
+- [ ] Has both a data output (for query results) and an error output
+
+#### Story 4.5.5: HTTP Response Node Definition
+
+**What:** A destination node that packages the upstream data into an HTTP response with a configurable status code and headers. It's the last stop in the workflow, the exit door that sends a response back to whoever called the API.
+
+```yaml
+# config/nodes/destinations/http-response.yaml
+apiVersion: graphiti/v1
+kind: NodeDefinition
+
+metadata:
+  id: destination-http-response
+  name: HTTP Response
+  description: "Formats and returns an HTTP response to the API caller"
+  version: "1.0.0"
+  icon: "📤"
+
+category:
+  group: Destinations
+  order: 30
+
+shape:
+  type: rounded-rect
+  width: 200
+  minWidth: 160
+  maxWidth: 280
+  headerColor: "var(--node-destination)"
+  headerBackground: "var(--node-destination-dim)"
+
+ports:
+  inputs:
+    - id: in-main
+      label: "Input"
+      type: data
+      position: left-center
+      maxConnections: 1
+    - id: in-error
+      label: "Error"
+      type: error
+      position: left-center
+      maxConnections: 1
+  outputs: []
+
+attributes:
+  - id: status_code
+    label: "Status Code"
+    type: number
+    default: 200
+    required: true
+    min: 100
+    max: 599
+    display: node-body
+    group: "Response"
+
+  - id: content_type
+    label: "Content-Type"
+    type: enum
+    options: ["application/json", "text/plain", "text/html", "application/xml"]
+    default: "application/json"
+    display: config-panel
+    group: "Response"
+
+  - id: headers
+    label: "Custom Headers"
+    type: json
+    default: "{}"
+    display: config-panel
+    group: "Response"
+    hint: '{"X-Request-Id": "{{requestId}}"}'
+
+  - id: body_template
+    label: "Body Template"
+    type: text
+    default: ""
+    display: config-panel
+    group: "Response"
+    hint: "Leave empty to forward upstream data as-is. Use {{field}} for templating."
+
+validation:
+  connectionRules: []
+```
+
+**Acceptance Criteria:**
+
+- [ ] Renders as a destination node (right accent bar) with no output ports (it's a terminal node)
+- [ ] Accepts both `data` and `error` type input ports (can be wired to either main flow or error paths)
+- [ ] Status code is visible on the node body
+- [ ] Body template supports simple mustache-style templating or passthrough
+
+#### Story 4.5.6: JSON Transform Node Definition
+
+**What:** A processing node that reshapes JSON data. Takes an input object, applies a mapping template, and outputs the transformed result. Useful for extracting fields from the request body to pass to a SQL query, or for reformatting a database result into an API response shape.
+
+```yaml
+# config/nodes/processing/json-transform.yaml
+apiVersion: graphiti/v1
+kind: NodeDefinition
+
+metadata:
+  id: processing-json-transform
+  name: JSON Transform
+  description: "Reshapes JSON data using a mapping template"
+  version: "1.0.0"
+  icon: "🔄"
+
+category:
+  group: Processing
+  order: 20
+
+shape:
+  type: rounded-rect
+  width: 200
+  minWidth: 160
+  maxWidth: 320
+  headerColor: "var(--node-processor)"
+  headerBackground: "var(--node-processor-dim)"
+
+ports:
+  inputs:
+    - id: in-main
+      label: "Input"
+      type: data
+      position: left-center
+      maxConnections: 1
+  outputs:
+    - id: out-main
+      label: "Output"
+      type: data
+      position: right-center
+      maxConnections: 1
+
+attributes:
+  - id: mapping
+    label: "Mapping Template"
+    type: json
+    required: true
+    display: config-panel
+    group: "Transform"
+    hint: '{"title": "body.title", "done": "body.completed"}'
+
+  - id: mode
+    label: "Mode"
+    type: enum
+    options: ["map-fields", "passthrough-with-additions", "expression"]
+    default: "map-fields"
+    display: node-body
+    group: "Transform"
+
+validation:
+  connectionRules:
+    - outputPort: out-main
+      allowedTargetCategories: ["Processing", "Destinations", "Control Flow"]
+      allowedTargetPorts: ["data"]
+```
+
+**Acceptance Criteria:**
+
+- [ ] Renders as a standard processor rounded-rect
+- [ ] Mode is visible on the node body
+- [ ] Mapping template is editable as JSON in the config panel
+- [ ] Supports three modes: field mapping, passthrough with additions, and raw expression
+
+### Sample Execution Engine
+
+#### Story 4.5.7: Engine Core, Webhook Receiver, and Workflow Runner
+
+**What:** A standalone Go service that lives in `examples/engine/`. It receives workflow definitions from Graphiti's deploy webhook, stores them, and executes them when HTTP requests arrive. The engine is deliberately simple, it's reference code, not a production runtime.
+
+**Project structure:**
+
+```
+examples/
+└── engine/
+    ├── cmd/
+    │   └── engine/
+    │       └── main.go                 # Entry point
+    ├── internal/
+    │   ├── receiver/
+    │   │   └── webhook.go              # Receives deploy payloads from Graphiti
+    │   ├── runner/
+    │   │   ├── runner.go               # Topological sort, node-by-node execution
+    │   │   ├── runner_test.go
+    │   │   └── context.go              # Execution context (carries data between nodes)
+    │   ├── executors/
+    │   │   ├── registry.go             # Maps node definition IDs to executor functions
+    │   │   ├── api_gateway.go          # Handles incoming HTTP, emits request data
+    │   │   ├── api_gateway_test.go
+    │   │   ├── http_router.go          # Routes by HTTP method
+    │   │   ├── http_router_test.go
+    │   │   ├── validate_payload.go     # Field validation logic
+    │   │   ├── validate_payload_test.go
+    │   │   ├── postgresql.go           # Executes parameterized SQL
+    │   │   ├── postgresql_test.go
+    │   │   ├── http_response.go        # Builds and sends HTTP response
+    │   │   ├── http_response_test.go
+    │   │   └── json_transform.go       # JSON reshaping
+    │   ├── callback/
+    │   │   └── reporter.go             # Sends status updates back to Graphiti
+    │   └── config/
+    │       └── config.go
+    ├── config.yaml
+    ├── go.mod
+    ├── Dockerfile
+    └── README.md
+```
+
+**Engine config:**
+
+```yaml
+# examples/engine/config.yaml
+server:
+  port: 9090
+
+graphiti:
+  callbackURL: "http://graphiti:8080/api/callbacks/execution"
+  hmacSecret: "${DEPLOY_HMAC_SECRET}"
+
+database:
+  url: "${DATABASE_URL}"
+
+logging:
+  level: debug
+  format: text
+```
+
+**Core engine flow:**
+
+```go
+// examples/engine/internal/runner/runner.go
+package runner
+
+// Run executes a workflow definition against an incoming request.
+// It walks the graph in topological order, passing data between nodes
+// through an ExecutionContext.
+func (r *Runner) Run(ctx context.Context, workflow WorkflowDef, request *http.Request) (*http.Response, error) {
+    runID := uuid.New().String()
+    execCtx := NewExecutionContext(runID, request)
+
+    // Topological sort to get execution order
+    order, err := TopologicalSort(workflow.Nodes, workflow.Edges)
+    if err != nil {
+        return nil, fmt.Errorf("cycle detected in workflow: %w", err)
+    }
+
+    for _, nodeID := range order {
+        node := workflow.FindNode(nodeID)
+        executor := r.registry.Get(node.DefinitionID)
+        if executor == nil {
+            r.reporter.ReportStatus(runID, nodeID, "failed", "no executor for: "+node.DefinitionID)
+            continue
+        }
+
+        // Report: node is running
+        r.reporter.ReportStatus(runID, nodeID, "running", "")
+
+        // Gather input data from upstream edges
+        inputData := execCtx.GatherInputs(nodeID, workflow.Edges)
+
+        // Execute the node
+        result, err := executor.Execute(execCtx, node, inputData)
+        if err != nil {
+            r.reporter.ReportStatus(runID, nodeID, "failed", err.Error())
+            // Route to error port if available
+            execCtx.SetOutput(nodeID, "out-error", map[string]any{
+                "error":   err.Error(),
+                "nodeId":  nodeID,
+                "inputData": inputData,
+            })
+            continue
+        }
+
+        // Store output for downstream nodes
+        execCtx.SetOutput(nodeID, result.OutputPort, result.Data)
+
+        // Report: node completed
+        r.reporter.ReportStatusWithData(runID, nodeID, "completed", result.Summary)
+    }
+
+    return execCtx.GetHTTPResponse(), nil
+}
+```
+
+```go
+// examples/engine/internal/runner/context.go
+package runner
+
+// ExecutionContext carries data between nodes during a single workflow run.
+// Think of it as a conveyor belt: each node picks up data from the belt,
+// transforms it, and puts the result back for the next node.
+type ExecutionContext struct {
+    RunID      string
+    Request    *http.Request
+    Response   *ResponseBuilder
+    outputs    map[string]map[string]any // nodeID → portID → data
+    mu         sync.RWMutex
+}
+
+// GatherInputs finds all edges targeting a given node and collects
+// the output data from their source nodes/ports.
+func (ec *ExecutionContext) GatherInputs(nodeID string, edges []EdgeDef) map[string]any {
+    merged := make(map[string]any)
+    for _, edge := range edges {
+        if edge.TargetNodeID == nodeID {
+            if data, ok := ec.GetOutput(edge.SourceNodeID, edge.SourcePortID); ok {
+                merged[edge.TargetPortID] = data
+            }
+        }
+    }
+    // If there's only one input, unwrap it for convenience
+    if len(merged) == 1 {
+        for _, v := range merged {
+            return v.(map[string]any)
+        }
+    }
+    return merged
+}
+```
+
+**Executor interface:**
+
+```go
+// examples/engine/internal/executors/registry.go
+package executors
+
+// NodeExecutor is the interface every node type must implement.
+// It takes an execution context, the node's configuration, and input data,
+// then returns the output data and which port it should flow through.
+type NodeExecutor interface {
+    Execute(ctx *runner.ExecutionContext, node NodeDef, input map[string]any) (*ExecutionResult, error)
+}
+
+type ExecutionResult struct {
+    OutputPort string         // which output port the data flows to (e.g., "out-main", "out-get")
+    Data       map[string]any // the data to pass downstream
+    Summary    map[string]any // brief summary for Graphiti's execution display
+}
+
+// Registry maps node definition IDs to their executor implementations.
+type Registry struct {
+    executors map[string]NodeExecutor
+}
+
+func NewRegistry(db *sql.DB) *Registry {
+    r := &Registry{executors: make(map[string]NodeExecutor)}
+    r.Register("source-api-gateway", &APIGatewayExecutor{})
+    r.Register("control-http-router", &HTTPRouterExecutor{})
+    r.Register("processing-validate-payload", &ValidatePayloadExecutor{})
+    r.Register("processing-json-transform", &JSONTransformExecutor{})
+    r.Register("destination-postgresql", &PostgreSQLExecutor{DB: db})
+    r.Register("destination-http-response", &HTTPResponseExecutor{})
+    return r
+}
+```
+
+**Acceptance Criteria:**
+
+- [ ] The engine starts with `go run cmd/engine/main.go` and listens on port 9090
+- [ ] `POST /webhooks/deploy` receives Graphiti's deploy payload and stores the workflow definition in memory
+- [ ] The engine verifies the HMAC signature on incoming deploy payloads
+- [ ] When a request arrives at a path matching a deployed workflow's API Gateway, the engine executes the workflow
+- [ ] Execution follows topological order (nodes with no unsatisfied dependencies run first)
+- [ ] Each node's executor is looked up by `definitionID` from the registry
+- [ ] Data flows between nodes through the `ExecutionContext` based on edge definitions
+- [ ] The engine sends status callbacks to Graphiti for every node transition (running, completed, failed)
+- [ ] Cycle detection prevents infinite loops (returns error before execution)
+- [ ] The runner handles the "conditional routing" pattern (HTTP Router sends data to exactly one output port per request)
+- [ ] Tests cover: topological sort, execution context data flow, each executor in isolation
+
+#### Story 4.5.8: Node Executor Implementations
+
+**What:** The concrete executors for each node type. Each one is straightforward, they read config from the node definition's attributes and process data.
+
+**API Gateway Executor:**
+
+```go
+// examples/engine/internal/executors/api_gateway.go
+package executors
+
+type APIGatewayExecutor struct{}
+
+func (e *APIGatewayExecutor) Execute(
+    ctx *runner.ExecutionContext, node NodeDef, _ map[string]any,
+) (*ExecutionResult, error) {
+    req := ctx.Request
+    pathParams := extractPathParams(node.Attributes["path"].(string), req.URL.Path)
+
+    var body map[string]any
+    if req.Body != nil {
+        json.NewDecoder(req.Body).Decode(&body)
+    }
+
+    return &ExecutionResult{
+        OutputPort: "out-main",
+        Data: map[string]any{
+            "method":      req.Method,
+            "path":        req.URL.Path,
+            "pathParams":  pathParams,
+            "queryParams": flattenQuery(req.URL.Query()),
+            "headers":     flattenHeaders(req.Header),
+            "body":        body,
+            "clientIp":    req.RemoteAddr,
+            "timestamp":   time.Now().UTC().Format(time.RFC3339),
+        },
+        Summary: map[string]any{
+            "method": req.Method,
+            "path":   req.URL.Path,
+        },
+    }, nil
+}
+```
+
+**HTTP Router Executor:**
+
+```go
+// examples/engine/internal/executors/http_router.go
+package executors
+
+type HTTPRouterExecutor struct{}
+
+func (e *HTTPRouterExecutor) Execute(
+    ctx *runner.ExecutionContext, node NodeDef, input map[string]any,
+) (*ExecutionResult, error) {
+    method := input["method"].(string)
+    pathParams, _ := input["pathParams"].(map[string]any)
+    idParam := node.Attributes["id_param"].(string)
+
+    _, hasID := pathParams[idParam]
+
+    var outputPort string
+    switch {
+    case method == "GET" && !hasID:
+        outputPort = "out-get"
+    case method == "GET" && hasID:
+        outputPort = "out-get-by-id"
+    case method == "POST":
+        outputPort = "out-post"
+    case method == "PUT":
+        outputPort = "out-put"
+    case method == "DELETE":
+        outputPort = "out-delete"
+    default:
+        outputPort = "out-unmatched"
+    }
+
+    return &ExecutionResult{
+        OutputPort: outputPort,
+        Data:       input, // pass through all request data
+        Summary:    map[string]any{"route": outputPort, "method": method},
+    }, nil
+}
+```
+
+**PostgreSQL Executor:**
+
+```go
+// examples/engine/internal/executors/postgresql.go
+package executors
+
+type PostgreSQLExecutor struct {
+    DB *sql.DB
+}
+
+func (e *PostgreSQLExecutor) Execute(
+    ctx *runner.ExecutionContext, node NodeDef, input map[string]any,
+) (*ExecutionResult, error) {
+    sqlTemplate := node.Attributes["sql"].(string)
+    operation := node.Attributes["operation"].(string)
+    paramPaths := parseJSONArray(node.Attributes["params"])
+    timeoutSec := intOrDefault(node.Attributes["timeout_seconds"], 30)
+
+    // Resolve parameter values from input data using dot-path notation
+    // e.g., "body.title" extracts input["body"]["title"]
+    params := make([]any, len(paramPaths))
+    for i, path := range paramPaths {
+        params[i] = resolveDotPath(input, path)
+    }
+
+    queryCtx, cancel := context.WithTimeout(ctx, time.Duration(timeoutSec)*time.Second)
+    defer cancel()
+
+    switch operation {
+    case "query":
+        rows, err := e.DB.QueryContext(queryCtx, sqlTemplate, params...)
+        if err != nil {
+            return nil, fmt.Errorf("query failed: %w", err)
+        }
+        defer rows.Close()
+        results := rowsToMaps(rows)
+        return &ExecutionResult{
+            OutputPort: "out-main",
+            Data:       map[string]any{"rows": results, "count": len(results)},
+            Summary:    map[string]any{"rowCount": len(results)},
+        }, nil
+
+    case "query-row":
+        rows, err := e.DB.QueryContext(queryCtx, sqlTemplate, params...)
+        if err != nil {
+            return nil, fmt.Errorf("query-row failed: %w", err)
+        }
+        defer rows.Close()
+        results := rowsToMaps(rows)
+        if len(results) == 0 {
+            return nil, fmt.Errorf("not found")
+        }
+        return &ExecutionResult{
+            OutputPort: "out-main",
+            Data:       results[0],
+            Summary:    map[string]any{"found": true},
+        }, nil
+
+    case "exec":
+        result, err := e.DB.ExecContext(queryCtx, sqlTemplate, params...)
+        if err != nil {
+            return nil, fmt.Errorf("exec failed: %w", err)
+        }
+        affected, _ := result.RowsAffected()
+        lastID, _ := result.LastInsertId()
+        // For INSERT with RETURNING, use query instead
+        // This handles simple INSERT/UPDATE/DELETE
+        return &ExecutionResult{
+            OutputPort: "out-main",
+            Data:       map[string]any{"rowsAffected": affected, "lastInsertId": lastID},
+            Summary:    map[string]any{"rowsAffected": affected},
+        }, nil
+    }
+
+    return nil, fmt.Errorf("unknown operation: %s", operation)
+}
+```
+
+**Validate Payload Executor:**
+
+```go
+// examples/engine/internal/executors/validate_payload.go
+package executors
+
+type ValidatePayloadExecutor struct{}
+
+func (e *ValidatePayloadExecutor) Execute(
+    ctx *runner.ExecutionContext, node NodeDef, input map[string]any,
+) (*ExecutionResult, error) {
+    requiredStr := node.Attributes["required_fields"].(string)
+    required := splitAndTrim(requiredStr, ",")
+
+    body, _ := input["body"].(map[string]any)
+    if body == nil {
+        return &ExecutionResult{
+            OutputPort: "out-error",
+            Data:       map[string]any{"error": "request body is empty", "status": 400},
+        }, nil
+    }
+
+    var missing []string
+    for _, field := range required {
+        if _, exists := body[field]; !exists {
+            missing = append(missing, field)
+        }
+    }
+
+    if len(missing) > 0 {
+        return &ExecutionResult{
+            OutputPort: "out-error",
+            Data: map[string]any{
+                "error":  fmt.Sprintf("missing required fields: %s", strings.Join(missing, ", ")),
+                "status": 400,
+                "fields": missing,
+            },
+        }, nil
+    }
+
+    // Validation passed, forward the full input
+    return &ExecutionResult{
+        OutputPort: "out-main",
+        Data:       input,
+        Summary:    map[string]any{"valid": true, "fieldsChecked": len(required)},
+    }, nil
+}
+```
+
+**HTTP Response Executor:**
+
+```go
+// examples/engine/internal/executors/http_response.go
+package executors
+
+type HTTPResponseExecutor struct{}
+
+func (e *HTTPResponseExecutor) Execute(
+    ctx *runner.ExecutionContext, node NodeDef, input map[string]any,
+) (*ExecutionResult, error) {
+    statusCode := intOrDefault(node.Attributes["status_code"], 200)
+    contentType := stringOrDefault(node.Attributes["content_type"], "application/json")
+
+    // If input came through the error port, override status from error data
+    if errStatus, ok := input["status"]; ok {
+        statusCode = int(errStatus.(float64))
+    }
+
+    // Build the response on the execution context
+    ctx.Response.SetStatus(statusCode)
+    ctx.Response.SetHeader("Content-Type", contentType)
+
+    // Apply custom headers
+    if headers, ok := node.Attributes["headers"].(map[string]any); ok {
+        for k, v := range headers {
+            ctx.Response.SetHeader(k, fmt.Sprint(v))
+        }
+    }
+
+    // Body: use template if provided, otherwise forward input as-is
+    bodyTemplate, _ := node.Attributes["body_template"].(string)
+    if bodyTemplate != "" {
+        ctx.Response.SetBodyFromTemplate(bodyTemplate, input)
+    } else {
+        ctx.Response.SetBodyJSON(input)
+    }
+
+    return &ExecutionResult{
+        OutputPort: "", // terminal node, no output port
+        Data:       nil,
+        Summary:    map[string]any{"statusCode": statusCode},
+    }, nil
+}
+```
+
+**Acceptance Criteria:**
+
+- [ ] **API Gateway:** extracts method, path, pathParams (`:id` → `{"id": "123"}`), queryParams, headers, body, clientIp, timestamp
+- [ ] **API Gateway:** supports path parameter extraction (e.g., `/api/todos/:id` matches `/api/todos/42` and yields `{"id": "42"}`)
+- [ ] **HTTP Router:** routes to the correct output port based on method and presence of an ID param
+- [ ] **HTTP Router:** sends unmatched methods to the "out-unmatched" error port
+- [ ] **Validate Payload:** checks required fields, returns error data through `out-error` port on failure
+- [ ] **Validate Payload:** passes through full input data on success through `out-main`
+- [ ] **PostgreSQL:** resolves parameter values from input using dot-path notation (`body.title` → `input["body"]["title"]`)
+- [ ] **PostgreSQL:** handles all three operation modes: `query` (returns rows), `query-row` (returns single row or error), `exec` (returns affected count)
+- [ ] **PostgreSQL:** enforces configurable query timeout
+- [ ] **PostgreSQL:** returns through `out-error` port on SQL errors
+- [ ] **HTTP Response:** sets status code, content-type, custom headers on the execution context response
+- [ ] **HTTP Response:** accepts input from both data and error ports (error port input can override status code)
+- [ ] **JSON Transform:** maps fields using dot-path notation from input to output
+- [ ] Each executor has unit tests with table-driven test cases
+- [ ] Tests for PostgreSQL executor use a test Postgres instance (via docker or testcontainers)
+
+#### Story 4.5.9: Status Callback Reporter
+
+**What:** The component that reports execution progress back to Graphiti, so the execution mode UI can show nodes lighting up in real-time.
+
+```go
+// examples/engine/internal/callback/reporter.go
+package callback
+
+type Reporter struct {
+    callbackURL string
+    hmacSecret  string
+    client      *http.Client
+}
+
+func (r *Reporter) ReportStatus(runID, nodeID, status, errorMsg string) {
+    r.ReportStatusWithData(runID, nodeID, status, nil)
+}
+
+func (r *Reporter) ReportStatusWithData(runID, nodeID, status string, summary map[string]any) {
+    payload := map[string]any{
+        "apiVersion":  "graphiti/v1",
+        "event":       "execution.node_status",
+        "runID":       runID,
+        "nodeID":      nodeID,
+        "status":      status,
+        "timestamp":   time.Now().UTC().Format(time.RFC3339),
+    }
+
+    if status == "running" {
+        payload["startedAt"] = time.Now().UTC().Format(time.RFC3339)
+    }
+    if status == "completed" || status == "failed" {
+        payload["completedAt"] = time.Now().UTC().Format(time.RFC3339)
+    }
+    if errorMsg != "" {
+        payload["error"] = errorMsg
+    }
+    if summary != nil {
+        payload["outputSummary"] = summary
+    }
+
+    body, _ := json.Marshal(payload)
+
+    // Fire and forget (with retry). Don't block execution waiting for Graphiti.
+    go func() {
+        for attempt := 0; attempt < 3; attempt++ {
+            req, _ := http.NewRequest("POST", r.callbackURL, bytes.NewReader(body))
+            req.Header.Set("Content-Type", "application/json")
+            if r.hmacSecret != "" {
+                sig := hmacSign(body, r.hmacSecret)
+                req.Header.Set("X-Graphiti-Signature", "sha256="+sig)
+            }
+            resp, err := r.client.Do(req)
+            if err == nil && resp.StatusCode < 500 {
+                resp.Body.Close()
+                return
+            }
+            time.Sleep(time.Duration(1<<attempt) * time.Second)
+        }
+    }()
+}
+```
+
+**Acceptance Criteria:**
+
+- [ ] Reporter sends callbacks asynchronously (doesn't block workflow execution)
+- [ ] Callbacks are HMAC-signed when a shared secret is configured
+- [ ] Retries up to 3 times with exponential backoff on failure
+- [ ] The payload matches the `execution.node_status` schema from the PRD (section 10.5)
+- [ ] Includes `startedAt` when status is "running" and `completedAt` when status is "completed" or "failed"
+- [ ] Error messages are included in the payload when status is "failed"
+- [ ] Output summaries are included when available (e.g., `{"rowCount": 5}`)
+
+#### Story 4.5.10: Pre-Built ToDo Workflow Definition
+
+**What:** A ready-to-load workflow YAML that wires up the complete ToDo CRUD API. Users can import this to see a fully working example without building it by hand.
+
+```yaml
+# examples/engine/workflows/todo-api.yaml
+apiVersion: graphiti/v1
+kind: WorkflowDefinition
+
+metadata:
+  name: "ToDo REST API"
+  description: "A complete CRUD API for ToDo items, backed by PostgreSQL"
+
+nodes:
+  - id: node-api-gateway
+    definitionID: source-api-gateway
+    label: "ToDo API"
+    x: 50
+    y: 250
+    attributes:
+      path: "/api/todos/:id"
+      methods: "ALL"
+      auth_type: "none"
+
+  - id: node-router
+    definitionID: control-http-router
+    label: "Method Router"
+    x: 320
+    y: 250
+    attributes:
+      id_param: "id"
+
+  # GET all todos
+  - id: node-pg-list
+    definitionID: destination-postgresql
+    label: "List Todos"
+    x: 620
+    y: 50
+    attributes:
+      connection_string: "${DATABASE_URL}"
+      operation: "query"
+      sql: "SELECT id, title, completed, created_at, updated_at FROM todos ORDER BY created_at DESC"
+      params: "[]"
+
+  - id: node-res-list
+    definitionID: destination-http-response
+    label: "200 OK (List)"
+    x: 920
+    y: 50
+    attributes:
+      status_code: 200
+      content_type: "application/json"
+
+  # GET single todo
+  - id: node-pg-get
+    definitionID: destination-postgresql
+    label: "Get Todo"
+    x: 620
+    y: 150
+    attributes:
+      connection_string: "${DATABASE_URL}"
+      operation: "query-row"
+      sql: "SELECT id, title, completed, created_at, updated_at FROM todos WHERE id = $1"
+      params: '["pathParams.id"]'
+
+  - id: node-res-get
+    definitionID: destination-http-response
+    label: "200 OK (Get)"
+    x: 920
+    y: 150
+    attributes:
+      status_code: 200
+      content_type: "application/json"
+
+  # POST create todo
+  - id: node-val-post
+    definitionID: processing-validate-payload
+    label: "Validate Create"
+    x: 620
+    y: 270
+    attributes:
+      required_fields: "title"
+
+  - id: node-pg-insert
+    definitionID: destination-postgresql
+    label: "Insert Todo"
+    x: 920
+    y: 250
+    attributes:
+      connection_string: "${DATABASE_URL}"
+      operation: "query-row"
+      sql: "INSERT INTO todos (title, completed) VALUES ($1, $2) RETURNING id, title, completed, created_at, updated_at"
+      params: '["body.title", "body.completed"]'
+
+  - id: node-res-create
+    definitionID: destination-http-response
+    label: "201 Created"
+    x: 1220
+    y: 250
+    attributes:
+      status_code: 201
+      content_type: "application/json"
+
+  # PUT update todo
+  - id: node-val-put
+    definitionID: processing-validate-payload
+    label: "Validate Update"
+    x: 620
+    y: 400
+    attributes:
+      required_fields: "title,completed"
+
+  - id: node-pg-update
+    definitionID: destination-postgresql
+    label: "Update Todo"
+    x: 920
+    y: 380
+    attributes:
+      connection_string: "${DATABASE_URL}"
+      operation: "query-row"
+      sql: "UPDATE todos SET title = $1, completed = $2, updated_at = NOW() WHERE id = $3 RETURNING id, title, completed, created_at, updated_at"
+      params: '["body.title", "body.completed", "pathParams.id"]'
+
+  - id: node-res-update
+    definitionID: destination-http-response
+    label: "200 OK (Update)"
+    x: 1220
+    y: 380
+    attributes:
+      status_code: 200
+      content_type: "application/json"
+
+  # DELETE todo
+  - id: node-pg-delete
+    definitionID: destination-postgresql
+    label: "Delete Todo"
+    x: 620
+    y: 520
+    attributes:
+      connection_string: "${DATABASE_URL}"
+      operation: "exec"
+      sql: "DELETE FROM todos WHERE id = $1"
+      params: '["pathParams.id"]'
+
+  - id: node-res-delete
+    definitionID: destination-http-response
+    label: "204 No Content"
+    x: 920
+    y: 520
+    attributes:
+      status_code: 204
+      content_type: "application/json"
+
+  # Error response (shared by validation failures)
+  - id: node-res-error
+    definitionID: destination-http-response
+    label: "400 Bad Request"
+    x: 920
+    y: 470
+    attributes:
+      status_code: 400
+      content_type: "application/json"
+
+edges:
+  # API Gateway → Router
+  - id: edge-1
+    sourceNodeID: node-api-gateway
+    sourcePortID: out-main
+    targetNodeID: node-router
+    targetPortID: in-main
+
+  # Router → branches
+  - id: edge-2
+    sourceNodeID: node-router
+    sourcePortID: out-get
+    targetNodeID: node-pg-list
+    targetPortID: in-main
+
+  - id: edge-3
+    sourceNodeID: node-router
+    sourcePortID: out-get-by-id
+    targetNodeID: node-pg-get
+    targetPortID: in-main
+
+  - id: edge-4
+    sourceNodeID: node-router
+    sourcePortID: out-post
+    targetNodeID: node-val-post
+    targetPortID: in-main
+
+  - id: edge-5
+    sourceNodeID: node-router
+    sourcePortID: out-put
+    targetNodeID: node-val-put
+    targetPortID: in-main
+
+  - id: edge-6
+    sourceNodeID: node-router
+    sourcePortID: out-delete
+    targetNodeID: node-pg-delete
+    targetPortID: in-main
+
+  # GET paths → responses
+  - id: edge-7
+    sourceNodeID: node-pg-list
+    sourcePortID: out-main
+    targetNodeID: node-res-list
+    targetPortID: in-main
+
+  - id: edge-8
+    sourceNodeID: node-pg-get
+    sourcePortID: out-main
+    targetNodeID: node-res-get
+    targetPortID: in-main
+
+  # POST path: validate → insert → response
+  - id: edge-9
+    sourceNodeID: node-val-post
+    sourcePortID: out-main
+    targetNodeID: node-pg-insert
+    targetPortID: in-main
+
+  - id: edge-10
+    sourceNodeID: node-pg-insert
+    sourcePortID: out-main
+    targetNodeID: node-res-create
+    targetPortID: in-main
+
+  # PUT path: validate → update → response
+  - id: edge-11
+    sourceNodeID: node-val-put
+    sourcePortID: out-main
+    targetNodeID: node-pg-update
+    targetPortID: in-main
+
+  - id: edge-12
+    sourceNodeID: node-pg-update
+    sourcePortID: out-main
+    targetNodeID: node-res-update
+    targetPortID: in-main
+
+  # DELETE path → response
+  - id: edge-13
+    sourceNodeID: node-pg-delete
+    sourcePortID: out-main
+    targetNodeID: node-res-delete
+    targetPortID: in-main
+
+  # Validation errors → error response
+  - id: edge-14
+    sourceNodeID: node-val-post
+    sourcePortID: out-error
+    targetNodeID: node-res-error
+    targetPortID: in-error
+
+  - id: edge-15
+    sourceNodeID: node-val-put
+    sourcePortID: out-error
+    targetNodeID: node-res-error
+    targetPortID: in-error
+```
+
+**Acceptance Criteria:**
+
+- [ ] The YAML file can be imported into Graphiti and renders all 14 nodes with correct shapes and categories
+- [ ] All 15 edges render as Bezier curves connecting the correct ports
+- [ ] The visual layout is clean and readable without manual rearrangement
+- [ ] The workflow passes Graphiti's pre-deploy validation (no missing required fields, no cycles, valid connections)
+- [ ] When deployed and running, all 5 CRUD operations work end-to-end
+
+#### Story 4.5.11: Docker Compose and Database Setup
+
+**What:** A single `docker-compose.yml` that spins up Graphiti, the sample engine, and Postgres. One command, full stack.
+
+```yaml
+# docker-compose.yml (project root)
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: graphiti
+      POSTGRES_PASSWORD: graphiti_dev
+      POSTGRES_DB: graphiti_todos
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./examples/engine/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U graphiti"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  graphiti:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      DEPLOY_HMAC_SECRET: "dev-secret-change-in-prod"
+      DEPLOY_WEBHOOK_PROD: "http://engine:9090/webhooks/deploy"
+      DEPLOY_WEBHOOK_STAGING: "http://engine:9090/webhooks/deploy"
+      SESSION_SECRET: "dev-session-secret"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./config:/app/config
+
+  engine:
+    build:
+      context: ./examples/engine
+      dockerfile: Dockerfile
+    ports:
+      - "9090:9090"
+    environment:
+      DATABASE_URL: "postgres://graphiti:graphiti_dev@postgres:5432/graphiti_todos?sslmode=disable"
+      GRAPHITI_CALLBACK_URL: "http://graphiti:8080/api/callbacks/execution"
+      DEPLOY_HMAC_SECRET: "dev-secret-change-in-prod"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      graphiti:
+        condition: service_started
+
+volumes:
+  pgdata:
+```
+
+**Postgres init script:**
+
+```sql
+-- examples/engine/init.sql
+CREATE TABLE IF NOT EXISTS todos (
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    completed BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Seed some sample data so the demo isn't empty
+INSERT INTO todos (title, completed) VALUES
+    ('Read the Graphiti docs', true),
+    ('Build a sample workflow', false),
+    ('Deploy to production', false),
+    ('Write integration tests', false);
+```
+
+**Engine Dockerfile:**
+
+```dockerfile
+# examples/engine/Dockerfile
+FROM golang:1.22-alpine AS builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -o engine ./cmd/engine/
+
+FROM alpine:3.19
+RUN apk add --no-cache ca-certificates
+COPY --from=builder /app/engine /usr/local/bin/engine
+COPY --from=builder /app/config.yaml /etc/engine/config.yaml
+EXPOSE 9090
+CMD ["engine"]
+```
+
+**Acceptance Criteria:**
+
+- [ ] `docker-compose up` starts all three services with no manual steps
+- [ ] Postgres initializes with the `todos` table and seed data
+- [ ] Graphiti is accessible at `http://localhost:8080`
+- [ ] The sample engine is accessible at `http://localhost:9090`
+- [ ] Graphiti's deploy webhook is pre-configured to point at the engine
+- [ ] The engine's callback URL is pre-configured to point at Graphiti
+- [ ] Health checks ensure Postgres is ready before the engine starts
+- [ ] `docker-compose down -v` cleanly removes everything including data
+- [ ] All three services share the same HMAC secret for webhook signing
+- [ ] The engine's `/webhooks/deploy` endpoint accepts Graphiti's deploy payload
+- [ ] After deploying the ToDo workflow, the following curl commands work:
+
+```bash
+# List all todos
+curl http://localhost:9090/api/todos
+
+# Get a single todo
+curl http://localhost:9090/api/todos/1
+
+# Create a new todo
+curl -X POST http://localhost:9090/api/todos \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Try Graphiti", "completed": false}'
+
+# Update a todo
+curl -X PUT http://localhost:9090/api/todos/1 \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Read the Graphiti docs", "completed": true}'
+
+# Delete a todo
+curl -X DELETE http://localhost:9090/api/todos/1
+
+# Validation error (missing title)
+curl -X POST http://localhost:9090/api/todos \
+  -H "Content-Type: application/json" \
+  -d '{"completed": true}'
+# → 400 Bad Request: {"error": "missing required fields: title"}
+```
+
+#### Story 4.5.12: Developer Guide for Building Graphiti Backends
+
+**What:** A comprehensive guide that teaches developers how to build their own execution engine for Graphiti. Lives in `docs/building-an-engine.md`. Uses the sample engine as a running example but explains the general principles.
+
+**Document outline:**
+
+```
+docs/building-an-engine.md
+
+1. How Graphiti Talks to Engines
+   - The webhook contract (deploy payload schema)
+   - HMAC signature verification
+   - The callback contract (execution status schema)
+   - What each field means and when it matters
+
+2. Receiving a Workflow Definition
+   - Parsing the deploy payload
+   - Understanding the node/edge graph structure
+   - Storing deployed workflows (in memory, database, wherever)
+   - Handling re-deploys (version bumps)
+
+3. Executing a Workflow
+   - Topological sorting: why order matters
+   - Walking the graph node by node
+   - The execution context pattern (passing data between nodes)
+   - Handling conditional routing (one input, multiple output ports)
+   - Error paths and error ports
+   - Parallel execution (future consideration)
+
+4. Building Node Executors
+   - The executor interface pattern
+   - Reading node configuration from attributes
+   - Resolving attribute values (dot-path notation, env vars)
+   - Input/output data contracts
+   - Error handling: when to use error ports vs. exceptions
+
+5. Reporting Status Back to Graphiti
+   - The callback endpoint and payload format
+   - When to send "running" vs "completed" vs "failed"
+   - Async reporting (don't block execution)
+   - Retry and error handling for callbacks
+   - What Graphiti does with the status (WebSocket → execution mode UI)
+
+6. Creating Custom Node Types
+   - Writing a YAML node definition
+   - Choosing shape, ports, and attributes
+   - Writing the matching executor
+   - Registering the executor in the engine
+   - Testing the node type end-to-end
+
+7. Running the Example
+   - docker-compose quickstart
+   - Building the ToDo workflow step-by-step
+   - Deploying and testing with curl
+   - Watching execution in Graphiti's execution mode
+
+8. Reference
+   - Full deploy payload schema
+   - Full callback payload schema
+   - Supported attribute types and their runtime values
+   - Port type compatibility matrix
+```
+
+**Acceptance Criteria:**
+
+- [ ] The guide is written for developers who've never seen Graphiti before
+- [ ] Every code example compiles and works (extracted from the sample engine)
+- [ ] The webhook payload schema is documented field-by-field with types and examples
+- [ ] The callback payload schema is documented the same way
+- [ ] The "Building Node Executors" section includes a complete example of a custom node from YAML to executor to test
+- [ ] The "Running the Example" section has copy-pasteable commands for the full demo
+- [ ] The guide explains the topological sort requirement and why it matters (with a diagram)
+- [ ] Error handling patterns are explained: when to route to an error port vs. when to fail the whole run
+- [ ] The guide links to the PRD sections for deeper context on the webhook contract and execution status
+
+**Phase 4.5 Demo Checkpoint:**
+
+```bash
+# Terminal 1: start the full stack
+docker-compose up
+
+# Terminal 2: open Graphiti and watch execution
+open http://localhost:8080
+# → Log in, create or import the ToDo workflow
+# → Click Deploy
+# → Switch to Execution Mode
+
+# Terminal 3: fire requests at the API
+curl -s http://localhost:9090/api/todos | jq .
+# → Watch nodes light up in the browser:
+#   API Gateway (amber → green) → HTTP Router (amber → green) → List Todos (amber → green) → 200 OK (amber → green)
+
+curl -s -X POST http://localhost:9090/api/todos \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Demo Graphiti at standup"}' | jq .
+# → Watch the POST path light up:
+#   API Gateway → HTTP Router → Validate Create → Insert Todo → 201 Created
+
+curl -s -X POST http://localhost:9090/api/todos \
+  -H "Content-Type: application/json" \
+  -d '{"completed": true}' | jq .
+# → Watch the error path light up:
+#   API Gateway → HTTP Router → Validate Create → 400 Bad Request (error port, red)
+```
+
+The demo tells the full story: you design a workflow visually, deploy it with a click, and then real HTTP requests flow through it with every step visible in real-time. That's the pitch for Graphiti in 60 seconds.
+
 ## Phase 5: Advanced Features
 
 **Goal:** Sub-workflows, the theme system, performance optimizations for large canvases, the full keyboard shortcut map, and accessibility improvements. At demo time, you can double-click a sub-workflow node to drill in, switch between light and dark themes, and navigate a 200-node workflow without lag.

@@ -1,0 +1,90 @@
+package partials
+
+import "graphiti/internal/domain"
+
+type ExecutionDetailsData struct {
+	Run *domain.ExecutionRun
+}
+
+templ ExecutionDetails(data ExecutionDetailsData) {
+	<div class="execution-details">
+		<div class="execution-header">
+			<h3>Run { data.Run.ID[:minLen(len(data.Run.ID), 8)] }</h3>
+			<span class={ "badge", runBadgeClass(data.Run.Status) }>{ string(data.Run.Status) }</span>
+		</div>
+		<div class="execution-meta">
+			if !data.Run.StartedAt.IsZero() {
+				<div class="meta-row">
+					<span class="meta-label">Started</span>
+					<span>{ data.Run.StartedAt.Format("Jan 2, 15:04:05") }</span>
+				</div>
+			}
+			if !data.Run.CompletedAt.IsZero() {
+				<div class="meta-row">
+					<span class="meta-label">Completed</span>
+					<span>{ data.Run.CompletedAt.Format("Jan 2, 15:04:05") }</span>
+				</div>
+			}
+			if !data.Run.CompletedAt.IsZero() && !data.Run.StartedAt.IsZero() {
+				<div class="meta-row">
+					<span class="meta-label">Duration</span>
+					<span>{ formatDuration(data.Run.CompletedAt.Sub(data.Run.StartedAt)) }</span>
+				</div>
+			}
+		</div>
+		<h4>Node Statuses</h4>
+		<div class="node-status-list">
+			for nodeID, ns := range data.Run.NodeStatuses {
+				<div class={ "node-status-entry", nodeStatusClass(ns.Status) }>
+					<div class="node-status-header">
+						<span class="node-status-id">{ nodeID }</span>
+						<span class={ "badge badge-sm", nodeBadgeClass(ns.Status) }>{ string(ns.Status) }</span>
+					</div>
+					if ns.ErrorMessage != "" {
+						<div class="node-error">{ ns.ErrorMessage }</div>
+					}
+					if len(ns.Logs) > 0 {
+						<details class="node-logs">
+							<summary>Logs ({ itoaPartial(len(ns.Logs)) })</summary>
+							<div class="log-entries">
+								for _, log := range ns.Logs {
+									<div class={ "log-entry", "log-" + log.Level }>
+										<span class="log-time">{ log.Timestamp.Format("15:04:05.000") }</span>
+										<span class="log-level">{ log.Level }</span>
+										<span class="log-msg">{ log.Message }</span>
+									</div>
+								}
+							</div>
+						</details>
+					}
+				</div>
+			}
+		</div>
+	</div>
+}
+
+func nodeStatusClass(status domain.NodeExecStatus) string {
+	switch status {
+	case domain.NodeExecCompleted:
+		return "node-completed"
+	case domain.NodeExecFailed:
+		return "node-failed"
+	case domain.NodeExecRunning:
+		return "node-running"
+	default:
+		return "node-pending"
+	}
+}
+
+func nodeBadgeClass(status domain.NodeExecStatus) string {
+	switch status {
+	case domain.NodeExecCompleted:
+		return "badge-success"
+	case domain.NodeExecFailed:
+		return "badge-danger"
+	case domain.NodeExecRunning:
+		return "badge-warning"
+	default:
+		return "badge-muted"
+	}
+}

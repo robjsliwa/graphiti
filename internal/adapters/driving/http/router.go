@@ -2,7 +2,9 @@ package http
 
 import (
 	"net/http"
+	"time"
 
+	"graphiti/internal/app"
 	"graphiti/internal/ports/driven"
 	"graphiti/internal/ports/driving"
 )
@@ -10,23 +12,34 @@ import (
 // RouterDeps holds all dependencies needed by the HTTP router.
 type RouterDeps struct {
 	WorkflowSvc  driving.WorkflowService
+	ExecutionSvc *app.ExecutionService
 	NodeRegistry driving.NodeRegistryService
 	AuthProvider driven.AuthProvider
 	UserRepo     driven.UserRepository
 	SessionStore *SessionStore
+	WSHub        *WebSocketHub
+	HMACSecret   string // for callback signature verification
 }
 
 // NewRouter creates the HTTP handler with all routes configured.
 func NewRouter(deps RouterDeps) http.Handler {
 	mux := http.NewServeMux()
 
+	// Rate limiter for auth endpoints
+	authLimiter := NewRateLimiter(10, time.Minute)
+
 	// Static files
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 
-	// Auth routes (no middleware)
-	mux.HandleFunc("GET /auth/login", handleLogin(deps.AuthProvider, deps.SessionStore))
-	mux.HandleFunc("GET /auth/callback", handleCallback(deps.AuthProvider, deps.UserRepo, deps.SessionStore))
+	// Auth routes (with rate limiting, no session auth)
+	mux.Handle("GET /auth/login", authLimiter.RateLimitMiddleware(handleLogin(deps.AuthProvider, deps.SessionStore)))
+	mux.Handle("GET /auth/callback", authLimiter.RateLimitMiddleware(handleCallback(deps.AuthProvider, deps.UserRepo, deps.SessionStore)))
 	mux.HandleFunc("POST /auth/logout", handleLogout(deps.SessionStore))
+
+	// Execution callback endpoint (authenticated by HMAC, not session)
+	if deps.ExecutionSvc != nil && deps.WSHub != nil {
+		mux.HandleFunc("POST /api/callbacks/execution", handleExecutionCallback(deps.ExecutionSvc, deps.WSHub, deps.HMACSecret))
+	}
 
 	// Protected routes - wrap in auth middleware
 	protected := http.NewServeMux()
@@ -56,6 +69,17 @@ func NewRouter(deps RouterDeps) http.Handler {
 	protected.HandleFunc("POST /api/workflows/{id}/deploy", handleDeploy(deps.WorkflowSvc))
 	protected.HandleFunc("GET /api/workflows/{id}/export", handleExport(deps.WorkflowSvc))
 	protected.HandleFunc("GET /api/workflows/{id}/versions", handleVersionHistory(deps.WorkflowSvc))
+
+	// Execution mode routes
+	if deps.ExecutionSvc != nil {
+		protected.HandleFunc("GET /api/workflows/{id}/runs", handleListRuns(deps.ExecutionSvc))
+		protected.HandleFunc("GET /api/runs/{runId}", handleGetRun(deps.ExecutionSvc))
+	}
+
+	// WebSocket for live execution updates
+	if deps.WSHub != nil {
+		protected.HandleFunc("GET /api/ws/workflows/{id}", handleWebSocket(deps.WSHub))
+	}
 
 	mux.Handle("/", AuthMiddleware(deps.SessionStore, deps.UserRepo)(protected))
 

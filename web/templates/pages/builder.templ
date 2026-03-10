@@ -45,22 +45,40 @@ templ Builder(data BuilderData) {
 				<span class="nav-user">{ data.Username }</span>
 			</div>
 		</nav>
+		<div class="mode-tabs">
+			<button class="mode-tab active" id="mode-builder" data-mode="builder">Builder</button>
+			<button class="mode-tab" id="mode-execution" data-mode="execution">Execution</button>
+		</div>
 		<div class="builder-layout">
 			<aside class="panel panel-left" id="palette-panel">
-				<div class="panel-header">
-					<h2>Components</h2>
-					<input
-						type="search"
-						placeholder="Search nodes..."
-						class="search-input"
-						name="q"
-						hx-get="/api/nodes/search"
-						hx-trigger="keyup changed delay:200ms"
-						hx-target="#node-palette"
-					/>
+				<div id="panel-left-builder">
+					<div class="panel-header">
+						<h2>Components</h2>
+						<input
+							type="search"
+							placeholder="Search nodes..."
+							class="search-input"
+							name="q"
+							hx-get="/api/nodes/search"
+							hx-trigger="keyup changed delay:200ms"
+							hx-target="#node-palette"
+						/>
+					</div>
+					<div id="node-palette">
+						@partials.NodePalette(data.NodeDefinitions)
+					</div>
 				</div>
-				<div id="node-palette">
-					@partials.NodePalette(data.NodeDefinitions)
+				<div id="panel-left-execution" style="display:none">
+					<div class="panel-header">
+						<h2>Run History</h2>
+					</div>
+					<div id="execution-run-list"
+						hx-get={ "/api/workflows/" + data.Workflow.ID + "/runs" }
+						hx-trigger="load"
+						hx-swap="innerHTML"
+					>
+						<div class="loading">Loading runs...</div>
+					</div>
 				</div>
 			</aside>
 			<main class="canvas-container" id="canvas-container">
@@ -72,7 +90,7 @@ templ Builder(data BuilderData) {
 						<button class="btn btn-icon" id="zoom-in" title="Zoom in">+</button>
 						<button class="btn btn-icon" id="zoom-fit" title="Fit to view">Fit</button>
 					</div>
-					<div class="undo-redo">
+					<div class="undo-redo" id="undo-redo-controls">
 						<button class="btn btn-icon" id="undo-btn" title="Undo (Ctrl+Z)" disabled>&#x21A9;</button>
 						<button class="btn btn-icon" id="redo-btn" title="Redo (Ctrl+Shift+Z)" disabled>&#x21AA;</button>
 					</div>
