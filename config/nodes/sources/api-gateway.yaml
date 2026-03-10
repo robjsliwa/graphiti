@@ -1,0 +1,88 @@
+apiVersion: graphiti/v1
+kind: NodeDefinition
+
+metadata:
+  id: source-api-gateway
+  name: API Gateway
+  description: "Receives HTTP requests on a configurable endpoint"
+  version: "1.0.0"
+  icon: "G"
+
+category:
+  group: Sources
+  order: 10
+
+shape:
+  type: rounded-rect
+  width: 220
+  minWidth: 180
+  maxWidth: 320
+  headerColor: "var(--node-source)"
+  headerBackground: "var(--node-source-dim)"
+
+ports:
+  inputs: []
+  outputs:
+    - id: out-main
+      label: "Request"
+      type: data
+      position: right-center
+      maxConnections: 1
+
+attributes:
+  - id: path
+    label: "Path"
+    type: string
+    default: "/api/resource"
+    required: true
+    display: node-body
+    group: "Endpoint"
+    hint: "Supports path params like /api/todos/:id"
+
+  - id: methods
+    label: "Allowed Methods"
+    type: enum
+    options: ["ALL", "GET", "POST", "PUT", "DELETE", "PATCH"]
+    default: "ALL"
+    display: node-body
+    group: "Endpoint"
+
+  - id: auth_type
+    label: "Authentication"
+    type: enum
+    options: ["none", "api-key", "bearer-token", "basic"]
+    default: "none"
+    display: both
+    group: "Security"
+
+  - id: auth_secret
+    label: "Auth Secret / API Key"
+    type: secret
+    required: false
+    display: config-panel
+    group: "Security"
+    hint: "Use ${API_KEY} for env var reference"
+
+  - id: rate_limit
+    label: "Rate Limit (req/min)"
+    type: number
+    default: 0
+    display: config-panel
+    group: "Security"
+    hint: "0 = unlimited"
+
+  - id: cors_origins
+    label: "CORS Origins"
+    type: string
+    default: "*"
+    display: config-panel
+    group: "Security"
+
+validation:
+  connectionRules:
+    - outputPort: out-main
+      allowedTargetCategories: ["Processing", "Control Flow"]
+      allowedTargetPorts: ["data"]
+  attributeRules:
+    - expression: "path.startsWith('/')"
+      message: "Path must start with /"

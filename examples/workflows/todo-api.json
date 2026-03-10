@@ -1,0 +1,297 @@
+{
+  "name": "ToDo REST API",
+  "description": "A full CRUD REST API for ToDo items backed by PostgreSQL. Deploy this workflow to the sample engine, then use curl to create, read, update, and delete todos.",
+  "nodes": [
+    {
+      "id": "n-gateway",
+      "definitionId": "source-api-gateway",
+      "label": "API Gateway",
+      "x": 72,
+      "y": 264,
+      "attributeValues": {
+        "path": "/api/todos",
+        "methods": "ALL",
+        "auth_type": "none",
+        "rate_limit": 0,
+        "cors_origins": "*"
+      }
+    },
+    {
+      "id": "n-router",
+      "definitionId": "control-http-router",
+      "label": "HTTP Router",
+      "x": 360,
+      "y": 264,
+      "attributeValues": {
+        "id_param": "id"
+      }
+    },
+    {
+      "id": "n-validate-post",
+      "definitionId": "processing-validate-payload",
+      "label": "Validate Create",
+      "x": 624,
+      "y": 408,
+      "attributeValues": {
+        "required_fields": "title",
+        "field_types": "{\"title\": \"string\"}",
+        "max_body_size": 256
+      }
+    },
+    {
+      "id": "n-validate-put",
+      "definitionId": "processing-validate-payload",
+      "label": "Validate Update",
+      "x": 624,
+      "y": 552,
+      "attributeValues": {
+        "required_fields": "title",
+        "field_types": "{\"title\": \"string\", \"completed\": \"boolean\"}",
+        "max_body_size": 256
+      }
+    },
+    {
+      "id": "n-pg-list",
+      "definitionId": "destination-postgresql",
+      "label": "List Todos",
+      "x": 624,
+      "y": 72,
+      "attributeValues": {
+        "connection_string": "${DATABASE_URL}",
+        "operation": "query",
+        "sql": "SELECT id, title, completed, created_at, updated_at FROM todos ORDER BY created_at DESC",
+        "params": "[]",
+        "timeout_seconds": 30
+      }
+    },
+    {
+      "id": "n-pg-get",
+      "definitionId": "destination-postgresql",
+      "label": "Get Todo",
+      "x": 624,
+      "y": 192,
+      "attributeValues": {
+        "connection_string": "${DATABASE_URL}",
+        "operation": "query-row",
+        "sql": "SELECT id, title, completed, created_at, updated_at FROM todos WHERE id = $1",
+        "params": "[\"pathParams.id\"]",
+        "timeout_seconds": 30
+      }
+    },
+    {
+      "id": "n-pg-insert",
+      "definitionId": "destination-postgresql",
+      "label": "Create Todo",
+      "x": 888,
+      "y": 408,
+      "attributeValues": {
+        "connection_string": "${DATABASE_URL}",
+        "operation": "query-row",
+        "sql": "INSERT INTO todos (title, completed) VALUES ($1, false) RETURNING id, title, completed, created_at, updated_at",
+        "params": "[\"body.title\"]",
+        "timeout_seconds": 30
+      }
+    },
+    {
+      "id": "n-pg-update",
+      "definitionId": "destination-postgresql",
+      "label": "Update Todo",
+      "x": 888,
+      "y": 552,
+      "attributeValues": {
+        "connection_string": "${DATABASE_URL}",
+        "operation": "query-row",
+        "sql": "UPDATE todos SET title = $1, completed = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING id, title, completed, created_at, updated_at",
+        "params": "[\"body.title\", \"body.completed\", \"pathParams.id\"]",
+        "timeout_seconds": 30
+      }
+    },
+    {
+      "id": "n-pg-delete",
+      "definitionId": "destination-postgresql",
+      "label": "Delete Todo",
+      "x": 624,
+      "y": 696,
+      "attributeValues": {
+        "connection_string": "${DATABASE_URL}",
+        "operation": "exec",
+        "sql": "DELETE FROM todos WHERE id = $1",
+        "params": "[\"pathParams.id\"]",
+        "timeout_seconds": 30
+      }
+    },
+    {
+      "id": "n-res-list",
+      "definitionId": "destination-http-response",
+      "label": "200 OK (List)",
+      "x": 888,
+      "y": 72,
+      "attributeValues": {
+        "status_code": 200,
+        "content_type": "application/json"
+      }
+    },
+    {
+      "id": "n-res-get",
+      "definitionId": "destination-http-response",
+      "label": "200 OK (Get)",
+      "x": 888,
+      "y": 192,
+      "attributeValues": {
+        "status_code": 200,
+        "content_type": "application/json"
+      }
+    },
+    {
+      "id": "n-res-create",
+      "definitionId": "destination-http-response",
+      "label": "201 Created",
+      "x": 1152,
+      "y": 408,
+      "attributeValues": {
+        "status_code": 201,
+        "content_type": "application/json"
+      }
+    },
+    {
+      "id": "n-res-update",
+      "definitionId": "destination-http-response",
+      "label": "200 OK (Update)",
+      "x": 1152,
+      "y": 552,
+      "attributeValues": {
+        "status_code": 200,
+        "content_type": "application/json"
+      }
+    },
+    {
+      "id": "n-res-delete",
+      "definitionId": "destination-http-response",
+      "label": "204 No Content",
+      "x": 888,
+      "y": 696,
+      "attributeValues": {
+        "status_code": 204,
+        "content_type": "application/json"
+      }
+    },
+    {
+      "id": "n-res-error",
+      "definitionId": "destination-http-response",
+      "label": "400 Bad Request",
+      "x": 888,
+      "y": 840,
+      "attributeValues": {
+        "status_code": 400,
+        "content_type": "application/json"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-gw-router",
+      "sourceNodeId": "n-gateway",
+      "sourcePortId": "out-main",
+      "targetNodeId": "n-router",
+      "targetPortId": "in-main"
+    },
+    {
+      "id": "e-router-list",
+      "sourceNodeId": "n-router",
+      "sourcePortId": "out-get",
+      "targetNodeId": "n-pg-list",
+      "targetPortId": "in-main"
+    },
+    {
+      "id": "e-router-get",
+      "sourceNodeId": "n-router",
+      "sourcePortId": "out-get-by-id",
+      "targetNodeId": "n-pg-get",
+      "targetPortId": "in-main"
+    },
+    {
+      "id": "e-router-post",
+      "sourceNodeId": "n-router",
+      "sourcePortId": "out-post",
+      "targetNodeId": "n-validate-post",
+      "targetPortId": "in-main"
+    },
+    {
+      "id": "e-router-put",
+      "sourceNodeId": "n-router",
+      "sourcePortId": "out-put",
+      "targetNodeId": "n-validate-put",
+      "targetPortId": "in-main"
+    },
+    {
+      "id": "e-router-delete",
+      "sourceNodeId": "n-router",
+      "sourcePortId": "out-delete",
+      "targetNodeId": "n-pg-delete",
+      "targetPortId": "in-main"
+    },
+    {
+      "id": "e-list-res",
+      "sourceNodeId": "n-pg-list",
+      "sourcePortId": "out-main",
+      "targetNodeId": "n-res-list",
+      "targetPortId": "in-main"
+    },
+    {
+      "id": "e-get-res",
+      "sourceNodeId": "n-pg-get",
+      "sourcePortId": "out-main",
+      "targetNodeId": "n-res-get",
+      "targetPortId": "in-main"
+    },
+    {
+      "id": "e-valpost-insert",
+      "sourceNodeId": "n-validate-post",
+      "sourcePortId": "out-main",
+      "targetNodeId": "n-pg-insert",
+      "targetPortId": "in-main"
+    },
+    {
+      "id": "e-valpost-err",
+      "sourceNodeId": "n-validate-post",
+      "sourcePortId": "out-error",
+      "targetNodeId": "n-res-error",
+      "targetPortId": "in-error"
+    },
+    {
+      "id": "e-valput-update",
+      "sourceNodeId": "n-validate-put",
+      "sourcePortId": "out-main",
+      "targetNodeId": "n-pg-update",
+      "targetPortId": "in-main"
+    },
+    {
+      "id": "e-valput-err",
+      "sourceNodeId": "n-validate-put",
+      "sourcePortId": "out-error",
+      "targetNodeId": "n-res-error",
+      "targetPortId": "in-error"
+    },
+    {
+      "id": "e-insert-res",
+      "sourceNodeId": "n-pg-insert",
+      "sourcePortId": "out-main",
+      "targetNodeId": "n-res-create",
+      "targetPortId": "in-main"
+    },
+    {
+      "id": "e-update-res",
+      "sourceNodeId": "n-pg-update",
+      "sourcePortId": "out-main",
+      "targetNodeId": "n-res-update",
+      "targetPortId": "in-main"
+    },
+    {
+      "id": "e-delete-res",
+      "sourceNodeId": "n-pg-delete",
+      "sourcePortId": "out-main",
+      "targetNodeId": "n-res-delete",
+      "targetPortId": "in-main"
+    }
+  ]
+}

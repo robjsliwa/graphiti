@@ -1,0 +1,74 @@
+apiVersion: graphiti/v1
+kind: NodeDefinition
+
+metadata:
+  id: processing-validate-payload
+  name: Validate Payload
+  description: "Validates request body fields against configurable rules"
+  version: "1.0.0"
+  icon: "V"
+
+category:
+  group: Processing
+  order: 15
+
+shape:
+  type: rounded-rect
+  width: 200
+  minWidth: 160
+  maxWidth: 320
+  headerColor: "var(--node-processor)"
+  headerBackground: "var(--node-processor-dim)"
+
+ports:
+  inputs:
+    - id: in-main
+      label: "Input"
+      type: data
+      position: left-center
+      maxConnections: 1
+  outputs:
+    - id: out-main
+      label: "Valid"
+      type: data
+      position: right-center
+      maxConnections: 1
+    - id: out-error
+      label: "Invalid"
+      type: error
+      position: bottom-center
+      maxConnections: 1
+
+attributes:
+  - id: required_fields
+    label: "Required Fields"
+    type: string
+    default: ""
+    required: true
+    display: node-body
+    group: "Rules"
+    hint: "Comma-separated field names, e.g.: title,email"
+
+  - id: field_types
+    label: "Field Type Rules"
+    type: json
+    default: "{}"
+    display: config-panel
+    group: "Rules"
+    hint: '{"title": "string", "completed": "boolean", "priority": "number"}'
+
+  - id: max_body_size
+    label: "Max Body Size (KB)"
+    type: number
+    default: 256
+    display: config-panel
+    group: "Limits"
+
+validation:
+  connectionRules:
+    - outputPort: out-main
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data"]
+    - outputPort: out-error
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data", "error"]

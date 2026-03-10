@@ -152,14 +152,20 @@ validation:
       allowedTargetCategories: ["Processing", "Destinations"]
 ```
 
-The project ships with four sample nodes:
+The project ships with 10 node definitions across four categories:
 
 | Node | Category | Shape | Description |
 |---|---|---|---|
 | Twilio | Sources | Rounded rect | Receives call recording callbacks |
+| API Gateway | Sources | Rounded rect | HTTP endpoint that receives API requests |
 | Transcribe | Processing | Rounded rect | Speech-to-text conversion |
+| Validate Payload | Processing | Rounded rect | Validates request body fields |
+| JSON Transform | Processing | Rounded rect | Reshapes JSON data using mapping templates |
 | S3 Storage | Destinations | Rounded rect | Store files to S3 |
+| PostgreSQL | Destinations | Rounded rect | Execute parameterized SQL queries |
+| HTTP Response | Destinations | Rounded rect | Format and return HTTP responses |
 | Condition | Control | Diamond | Branch based on expression |
+| HTTP Router | Control | Diamond | Route requests by HTTP method |
 
 ### Command Pattern & Undo/Redo
 
@@ -310,6 +316,175 @@ Light and dark themes are defined via CSS custom properties. The UI respects `da
 [data-theme="dark"]  { --bg: #0F1117; --surface: #1A1D27; --accent: #60A5FA; }
 ```
 
+## Sample Execution Engine
+
+Graphiti ships with a reference execution engine in `examples/engine/` that demonstrates the full deploy-execute-callback loop. It turns Graphiti from a visual editor into a live system where you can build a REST API backed by PostgreSQL entirely by wiring nodes together.
+
+### What It Does
+
+The sample engine is a standalone Go HTTP server that:
+
+1. **Receives deploy webhooks** from Graphiti (with HMAC signature verification)
+2. **Registers API routes** from the workflow's API Gateway nodes
+3. **Executes workflows** in topological order when HTTP requests arrive
+4. **Reports status back** to Graphiti via callbacks, lighting up nodes in real-time
+
+When you deploy a workflow containing an API Gateway node with `path: /api/todos`, the engine starts accepting requests at that path and runs each request through the workflow graph.
+
+### Quick Start with Docker Compose
+
+The fastest way to see everything working together:
+
+```bash
+docker compose up --build
+```
+
+This starts three services:
+
+| Service | Port | Description |
+|---|---|---|
+| Graphiti | `localhost:8080` | Workflow builder UI |
+| Engine | `localhost:9090` | Sample execution engine |
+| PostgreSQL | `localhost:5432` | Database for the ToDo API |
+
+### Building the ToDo API
+
+Once the stack is running:
+
+1. Open `http://localhost:8080` (auto-authenticated in dev mode)
+2. Create a new workflow named "ToDo API"
+3. Build the workflow by dragging nodes from the palette:
+   - **API Gateway** (Sources) - set path to `/api/todos`
+   - **HTTP Router** (Control Flow) - routes by method
+   - **Validate Payload** (Processing) - validates POST/PUT bodies
+   - **PostgreSQL** (Destinations) - runs SQL queries
+   - **HTTP Response** (Destinations) - formats responses
+4. Wire the nodes together and configure each one
+5. Click **Deploy**
+
+Or load the pre-built workflow from `examples/workflows/todo-api.json`.
+
+### Testing the API
+
+After deploying, use curl to interact with your workflow-powered API:
+
+```bash
+# Create a todo
+curl -X POST http://localhost:9090/api/todos \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Buy milk"}'
+
+# List all todos
+curl http://localhost:9090/api/todos
+
+# Get a specific todo
+curl http://localhost:9090/api/todos/1
+
+# Update a todo
+curl -X PUT http://localhost:9090/api/todos/1 \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Buy oat milk", "completed": true}'
+
+# Delete a todo
+curl -X DELETE http://localhost:9090/api/todos/1
+```
+
+While the API processes requests, switch to **Execution mode** in the Graphiti UI to watch nodes light up in real-time as data flows through the workflow.
+
+### Running the Engine Standalone
+
+If you prefer to run without Docker:
+
+```bash
+# Start PostgreSQL (any method)
+# export DATABASE_URL=postgres://user:pass@localhost:5432/graphiti?sslmode=disable
+
+# Start Graphiti
+task run
+
+# Start the engine
+cd examples/engine
+export DATABASE_URL=postgres://user:pass@localhost:5432/graphiti?sslmode=disable
+export GRAPHITI_CALLBACK_URL=http://localhost:8080/api/callbacks/execution
+export DEPLOY_HMAC_SECRET=your-shared-secret
+go run .
+```
+
+### How the Engine Works
+
+The engine processes each HTTP request through the deployed workflow graph:
+
+```
+curl POST /api/todos {"title":"Buy milk"}
+  |
+  v
+API Gateway (receives request, emits structured data)
+  |
+  v
+HTTP Router (inspects method, routes to POST branch)
+  |
+  v
+Validate Payload (checks required fields)
+  |-- valid --> PostgreSQL INSERT (creates the todo)
+  |                |
+  |                v
+  |             HTTP Response (201 Created)
+  |
+  |-- invalid --> HTTP Response (400 Bad Request)
+```
+
+Each node is executed by a **NodeExecutor** that implements the node type's logic:
+
+| Node Type | Executor | What It Does |
+|---|---|---|
+| `source-api-gateway` | `APIGatewayExecutor` | Passes through incoming request data |
+| `control-http-router` | `HTTPRouterExecutor` | Routes to output port based on HTTP method |
+| `processing-validate-payload` | `ValidatePayloadExecutor` | Checks required fields, routes valid/invalid |
+| `destination-postgresql` | `PostgreSQLExecutor` | Runs parameterized SQL against Postgres |
+| `destination-http-response` | `HTTPResponseExecutor` | Packages data into HTTP response shape |
+| `processing-json-transform` | `JSONTransformExecutor` | Reshapes JSON using a mapping template |
+
+### Building Your Own Engine
+
+The sample engine demonstrates the contract between Graphiti and any execution engine:
+
+**1. Receive deploys** via `POST /deploy` with HMAC-signed payload:
+```
+X-Graphiti-Signature: sha256=<hex digest>
+X-Graphiti-Event: workflow.deployed
+```
+
+**2. Parse the workflow definition** from `payload.workflow.definition` which contains `nodes` and `edges`.
+
+**3. Build an execution graph** and run nodes in topological order, passing data along edges.
+
+**4. Report status** back to Graphiti via `POST /api/callbacks/execution`:
+```json
+{
+  "apiVersion": "graphiti/v1",
+  "event": "node.status",
+  "runID": "run-123",
+  "workflowID": "wf-001",
+  "nodeID": "node-abc",
+  "status": "completed",
+  "startedAt": "2026-03-10T14:30:00Z",
+  "completedAt": "2026-03-10T14:30:01Z"
+}
+```
+
+Sign callbacks with the same HMAC secret using `X-Graphiti-Signature`.
+
+The engine is ~600 lines of Go across 5 files. Read the source in `examples/engine/` for the complete reference implementation.
+
+### Engine Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `PORT` | `9090` | Engine HTTP port |
+| `DATABASE_URL` | *(none)* | PostgreSQL connection string |
+| `GRAPHITI_CALLBACK_URL` | `http://localhost:8080/api/callbacks/execution` | Graphiti callback endpoint |
+| `DEPLOY_HMAC_SECRET` | *(none)* | Shared secret for webhook signing |
+
 ## Configuration
 
 ### Environment Variables
@@ -392,6 +567,18 @@ See [`config/app.yaml`](config/app.yaml) for server, storage, and deploy setting
 - [x] Per-node status overlays (pending, running, completed, failed, skipped)
 - [x] Execution callback endpoint for engine status updates (HMAC-authenticated)
 - [x] WebSocket for live execution updates (raw HTTP hijack, no external deps)
+
+### Phase 4.5: Sample Execution Engine — **Complete**
+
+- [x] 6 new node definitions (API Gateway, HTTP Router, Validate Payload, PostgreSQL, HTTP Response, JSON Transform)
+- [x] Sample execution engine with topological-order workflow runner
+- [x] Node executors for all node types (router, validator, SQL, response, transform)
+- [x] HMAC-signed deploy webhook receiver with signature verification
+- [x] Status callback sender with HMAC signing for live execution updates
+- [x] Path parameter matching for REST-style routes (`/api/todos/:id`)
+- [x] Pre-built ToDo REST API workflow definition
+- [x] Docker Compose stack (Graphiti + Engine + PostgreSQL)
+- [x] 24 engine tests covering types, graph, executors, runner, and HTTP handlers
 
 ### Phase 5: Advanced Features — Planned
 

@@ -1,0 +1,71 @@
+apiVersion: graphiti/v1
+kind: NodeDefinition
+
+metadata:
+  id: destination-http-response
+  name: HTTP Response
+  description: "Formats and returns an HTTP response to the API caller"
+  version: "1.0.0"
+  icon: "H"
+
+category:
+  group: Destinations
+  order: 30
+
+shape:
+  type: rounded-rect
+  width: 200
+  minWidth: 160
+  maxWidth: 280
+  headerColor: "var(--node-destination)"
+  headerBackground: "var(--node-destination-dim)"
+
+ports:
+  inputs:
+    - id: in-main
+      label: "Input"
+      type: data
+      position: left-center
+      maxConnections: 1
+    - id: in-error
+      label: "Error"
+      type: error
+      position: left-center
+      maxConnections: 1
+  outputs: []
+
+attributes:
+  - id: status_code
+    label: "Status Code"
+    type: number
+    default: 200
+    required: true
+    display: node-body
+    group: "Response"
+
+  - id: content_type
+    label: "Content Type"
+    type: enum
+    options: ["application/json", "text/plain", "text/html", "application/xml"]
+    default: "application/json"
+    display: config-panel
+    group: "Response"
+
+  - id: headers
+    label: "Custom Headers"
+    type: json
+    default: "{}"
+    display: config-panel
+    group: "Response"
+    hint: '{"X-Custom-Header": "value"}'
+
+  - id: body_template
+    label: "Body Template"
+    type: text
+    default: ""
+    display: config-panel
+    group: "Response"
+    hint: "Leave empty to pass through upstream data. Use {{.field}} for templating."
+
+validation:
+  connectionRules: []

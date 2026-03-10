@@ -1,0 +1,87 @@
+apiVersion: graphiti/v1
+kind: NodeDefinition
+
+metadata:
+  id: control-http-router
+  name: HTTP Router
+  description: "Routes requests based on HTTP method and path pattern"
+  version: "1.0.0"
+  icon: "R"
+
+category:
+  group: Control Flow
+  order: 10
+
+shape:
+  type: diamond
+  width: 200
+  minWidth: 160
+  maxWidth: 280
+  headerColor: "var(--node-control)"
+  headerBackground: "var(--node-control-dim)"
+
+ports:
+  inputs:
+    - id: in-main
+      label: "Request"
+      type: data
+      position: left-center
+      maxConnections: 1
+  outputs:
+    - id: out-get
+      label: "GET"
+      type: data
+      position: right-top
+      maxConnections: 1
+    - id: out-get-by-id
+      label: "GET :id"
+      type: data
+      position: right-center
+      maxConnections: 1
+    - id: out-post
+      label: "POST"
+      type: data
+      position: right-bottom
+      maxConnections: 1
+    - id: out-put
+      label: "PUT"
+      type: data
+      position: bottom-center
+      maxConnections: 1
+    - id: out-delete
+      label: "DELETE"
+      type: data
+      position: bottom-center
+      maxConnections: 1
+    - id: out-unmatched
+      label: "No Match"
+      type: error
+      position: bottom-center
+      maxConnections: 1
+
+attributes:
+  - id: id_param
+    label: "ID Path Parameter"
+    type: string
+    default: "id"
+    display: config-panel
+    group: "Routing"
+    hint: "Name of the path parameter that distinguishes GET-all from GET-by-id"
+
+validation:
+  connectionRules:
+    - outputPort: out-get
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data"]
+    - outputPort: out-post
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data"]
+    - outputPort: out-put
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data"]
+    - outputPort: out-delete
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data"]
+    - outputPort: out-unmatched
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data", "error"]

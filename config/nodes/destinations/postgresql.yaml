@@ -1,0 +1,91 @@
+apiVersion: graphiti/v1
+kind: NodeDefinition
+
+metadata:
+  id: destination-postgresql
+  name: PostgreSQL
+  description: "Executes a parameterized SQL query against a PostgreSQL database"
+  version: "1.0.0"
+  icon: "P"
+
+category:
+  group: Destinations
+  order: 20
+
+shape:
+  type: rounded-rect
+  width: 220
+  minWidth: 180
+  maxWidth: 360
+  headerColor: "var(--node-destination)"
+  headerBackground: "var(--node-destination-dim)"
+
+ports:
+  inputs:
+    - id: in-main
+      label: "Input"
+      type: data
+      position: left-center
+      maxConnections: 1
+  outputs:
+    - id: out-main
+      label: "Result"
+      type: data
+      position: right-center
+      maxConnections: 1
+    - id: out-error
+      label: "Error"
+      type: error
+      position: bottom-center
+      maxConnections: 1
+
+attributes:
+  - id: connection_string
+    label: "Connection String"
+    type: secret
+    required: true
+    display: config-panel
+    group: "Connection"
+    hint: "Use ${DATABASE_URL} for env var reference"
+
+  - id: operation
+    label: "Operation"
+    type: enum
+    options: ["query", "query-row", "exec"]
+    default: "query"
+    required: true
+    display: node-body
+    group: "Query"
+    hint: "query = multiple rows, query-row = single row, exec = INSERT/UPDATE/DELETE"
+
+  - id: sql
+    label: "SQL"
+    type: text
+    required: true
+    display: config-panel
+    group: "Query"
+    hint: "Use $1, $2, ... for parameters"
+
+  - id: params
+    label: "Parameter Mapping"
+    type: json
+    default: "[]"
+    display: config-panel
+    group: "Query"
+    hint: '["body.title", "body.completed", "pathParams.id"]'
+
+  - id: timeout_seconds
+    label: "Query Timeout (s)"
+    type: number
+    default: 30
+    display: config-panel
+    group: "Connection"
+
+validation:
+  connectionRules:
+    - outputPort: out-main
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data"]
+    - outputPort: out-error
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data", "error"]

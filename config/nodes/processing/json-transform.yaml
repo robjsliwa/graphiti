@@ -1,0 +1,60 @@
+apiVersion: graphiti/v1
+kind: NodeDefinition
+
+metadata:
+  id: processing-json-transform
+  name: JSON Transform
+  description: "Reshapes JSON data using a mapping template"
+  version: "1.0.0"
+  icon: "J"
+
+category:
+  group: Processing
+  order: 20
+
+shape:
+  type: rounded-rect
+  width: 200
+  minWidth: 160
+  maxWidth: 320
+  headerColor: "var(--node-processor)"
+  headerBackground: "var(--node-processor-dim)"
+
+ports:
+  inputs:
+    - id: in-main
+      label: "Input"
+      type: data
+      position: left-center
+      maxConnections: 1
+  outputs:
+    - id: out-main
+      label: "Output"
+      type: data
+      position: right-center
+      maxConnections: 1
+
+attributes:
+  - id: mapping
+    label: "Mapping Template"
+    type: json
+    required: true
+    display: config-panel
+    group: "Transform"
+    default: "{}"
+    hint: '{"outputField": "input.nested.field"}'
+
+  - id: mode
+    label: "Mode"
+    type: enum
+    options: ["merge", "replace"]
+    default: "merge"
+    display: node-body
+    group: "Transform"
+    hint: "merge = add to existing data, replace = output only mapped fields"
+
+validation:
+  connectionRules:
+    - outputPort: out-main
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data"]
