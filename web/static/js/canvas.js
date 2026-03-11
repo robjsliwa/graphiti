@@ -77,8 +77,11 @@ export class CanvasEngine {
       const pos = this.getNodePosition(n);
       minX = Math.min(minX, pos.x);
       minY = Math.min(minY, pos.y);
-      maxX = Math.max(maxX, pos.x + 200);
-      maxY = Math.max(maxY, pos.y + 80);
+      const nodeW = parseInt(n.querySelector('.node-header')?.getAttribute('width') || '200');
+      const nodeBg = n.querySelector('.node-bg');
+      const nodeH = parseInt(nodeBg?.getAttribute('height') || '80');
+      maxX = Math.max(maxX, pos.x + nodeW);
+      maxY = Math.max(maxY, pos.y + nodeH);
     });
     if (!isFinite(minX)) return;
     const pad = 48;
@@ -173,8 +176,8 @@ export class CanvasEngine {
 
     const def = node.definition || {};
     const shape = def.shape || {};
-    const w = shape.width || 200;
     const bodyAttrs = (def.attributes || []).filter(a => a.display === 'node-body' || a.display === 'both');
+    const w = this._calcNodeWidth(def, bodyAttrs.length);
     const h = this._calcNodeHeight(def, bodyAttrs.length);
     const hdrBg = shape.headerBackground || 'var(--surface-2)';
     const hdrColor = shape.headerColor || 'var(--text)';
@@ -205,9 +208,10 @@ export class CanvasEngine {
     g.appendChild(el('text', { x: 32, y: 22, class: 'node-title', fill: hdrColor }, node.label));
 
     // Body attributes
+    const attrX = this._bodyAttrX(def, bodyAttrs.length);
     bodyAttrs.forEach((attr, i) => {
       const val = node.attributes?.[attr.id] ?? '';
-      g.appendChild(el('text', { x: 12, y: 52 + i * 20, class: 'node-attr-label' }, `${attr.label}: ${val}`));
+      g.appendChild(el('text', { x: attrX, y: 52 + i * 20, class: 'node-attr-label' }, `${attr.label}: ${val}`));
     });
 
     // Ports
@@ -246,6 +250,39 @@ export class CanvasEngine {
     const portsHeight = maxPorts * portSpacing;
     const contentHeight = Math.max(bodyAttrHeight, portsHeight);
     return Math.max(60, headerHeight + contentHeight + bottomPadding);
+  }
+
+  _hasInputLabels(def) {
+    return (def.inputs || []).some(p => p.label);
+  }
+
+  _hasOutputLabels(def) {
+    return (def.outputs || []).some(p => p.label);
+  }
+
+  _hasBodyAttrs(def, bodyAttrCount) {
+    return bodyAttrCount > 0;
+  }
+
+  _calcNodeWidth(def, bodyAttrCount) {
+    const baseWidth = def.shape?.width || 200;
+    const hasIn = this._hasInputLabels(def);
+    const hasOut = this._hasOutputLabels(def);
+    const hasBody = this._hasBodyAttrs(def, bodyAttrCount);
+    if (hasBody && (hasIn || hasOut)) {
+      let needed = 12 + 100 + 12; // padding + minCenterWidth + padding
+      if (hasIn) needed += 56 + 8; // inputLabelColWidth + colGap
+      if (hasOut) needed += 56 + 8; // outputLabelColWidth + colGap
+      return Math.max(baseWidth, needed);
+    }
+    return baseWidth;
+  }
+
+  _bodyAttrX(def, bodyAttrCount) {
+    if (this._hasInputLabels(def) && this._hasBodyAttrs(def, bodyAttrCount)) {
+      return 12 + 56 + 8; // 76
+    }
+    return 12;
   }
 
   _portY(idx, count, h) {
@@ -287,7 +324,9 @@ export class CanvasEngine {
     const src = nodes.find(n => n.id === edge.sourceNodeId);
     const tgt = nodes.find(n => n.id === edge.targetNodeId);
     if (!src || !tgt) return '';
-    const sw = src.definition?.shape?.width || 200;
+    const srcDef = src.definition || {};
+    const srcBodyAttrs = (srcDef.attributes || []).filter(a => a.display === 'node-body' || a.display === 'both');
+    const sw = this._calcNodeWidth(srcDef, srcBodyAttrs.length);
     const srcPortY = this._findPortY(src, edge.sourcePortId, true);
     const tgtPortY = this._findPortY(tgt, edge.targetPortId, false);
     const x1 = src.x + sw, y1 = src.y + srcPortY, x2 = tgt.x, y2 = tgt.y + tgtPortY;

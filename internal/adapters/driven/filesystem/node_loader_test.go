@@ -2,6 +2,7 @@ package filesystem
 
 import (
 	"context"
+	"graphiti/internal/domain"
 	"os"
 	"path/filepath"
 	"testing"
@@ -493,6 +494,52 @@ shape:
 	}
 	if len(defs) != 0 {
 		t.Fatalf("expected 0 definitions, got %d", len(defs))
+	}
+}
+
+func TestLoadAll_ComboboxAttribute(t *testing.T) {
+	dir := t.TempDir()
+	comboYAML := `apiVersion: graphiti/v1
+kind: NodeDefinition
+metadata:
+  id: combo-node
+  name: ComboNode
+  description: "Node with combobox attribute"
+  version: "1.0.0"
+  icon: "C"
+category:
+  group: Destinations
+  order: 1
+shape:
+  type: rounded-rect
+  width: 200
+attributes:
+  - id: status
+    label: "Status Code"
+    type: combobox
+    options: ["200 OK", "404 Not Found", "500 Internal Server Error"]
+    default: "200 OK"
+    display: node-body
+`
+	writeYAML(t, dir, "combo.yaml", comboYAML)
+
+	loader := NewNodeLoader(dir, nil)
+	defs, err := loader.LoadAll(context.Background())
+	if err != nil {
+		t.Fatalf("LoadAll error: %v", err)
+	}
+	if len(defs) != 1 {
+		t.Fatalf("expected 1 definition, got %d", len(defs))
+	}
+	attr := defs[0].Attributes[0]
+	if attr.Type != domain.AttrTypeCombobox {
+		t.Errorf("expected type combobox, got %s", attr.Type)
+	}
+	if len(attr.Options) != 3 {
+		t.Errorf("expected 3 options, got %d", len(attr.Options))
+	}
+	if attr.Options[0] != "200 OK" {
+		t.Errorf("expected first option '200 OK', got %q", attr.Options[0])
 	}
 }
 

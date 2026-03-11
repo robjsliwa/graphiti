@@ -94,6 +94,20 @@ templ renderAttributeInput(data ConfigPanelData, attr domain.AttributeDefinition
 					<option value={ opt } selected?={ attrValueStr(data.Node.AttributeValues[attr.ID]) == opt }>{ opt }</option>
 				}
 			</select>
+		case domain.AttrTypeCombobox:
+			<input
+				type="text"
+				id={ "attr-" + attr.ID }
+				name={ attr.ID }
+				list={ "list-" + attr.ID }
+				value={ attrValueStr(data.Node.AttributeValues[attr.ID]) }
+				class="input"
+			/>
+			<datalist id={ "list-" + attr.ID }>
+				for _, opt := range attr.Options {
+					<option value={ opt }></option>
+				}
+			</datalist>
 		case domain.AttrTypeSecret:
 			<input
 				type="text"

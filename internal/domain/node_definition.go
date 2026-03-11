@@ -113,6 +113,7 @@ const (
 	AttrTypeExpression  AttributeType = "expression"
 	AttrTypePortMapping AttributeType = "port-mapping"
 	AttrTypeWorkflowRef AttributeType = "workflow-reference"
+	AttrTypeCombobox    AttributeType = "combobox"
 )
 
 // ValidAttributeTypes returns the set of allowed attribute types.
@@ -128,6 +129,7 @@ func ValidAttributeTypes() map[AttributeType]bool {
 		AttrTypeExpression:  true,
 		AttrTypePortMapping: true,
 		AttrTypeWorkflowRef: true,
+		AttrTypeCombobox:    true,
 	}
 }
 

@@ -180,3 +180,85 @@ func TestHexagonPoints_DynamicHeight(t *testing.T) {
 		t.Error("hexagonPoints returned empty string")
 	}
 }
+
+func TestCalcNodeWidth_GrowsWithThreeColumns(t *testing.T) {
+	// Node with labeled input ports AND body attrs should get wider
+	node := makeNode(2, 1, 1, 200)
+	w := calcNodeWidth(node)
+	expected := 12 + inputLabelColWidth + colGap + minCenterWidth + colGap + outputLabelColWidth + 12
+	if w < expected {
+		t.Errorf("width %d is less than minimum three-column width %d", w, expected)
+	}
+}
+
+func TestCalcNodeWidth_GrowsWithOutputLabelsOnly(t *testing.T) {
+	// Node with output labels + body attrs but no input labels still expands
+	node := makeNode(0, 1, 1, 200)
+	w := calcNodeWidth(node)
+	// needed = 12 + minCenterWidth + 12 + outputLabelColWidth + colGap = 188
+	// base 200 > 188, so stays at 200
+	if w != 200 {
+		t.Errorf("width %d should be base width 200 (needed < base)", w)
+	}
+}
+
+func TestCalcNodeWidth_NoGrowthWithoutLabels(t *testing.T) {
+	// Node without any port labels keeps original width
+	def := &domain.NodeDefinition{
+		Shape: domain.Shape{Width: 200},
+	}
+	// Ports with empty labels
+	def.Inputs = append(def.Inputs, domain.PortDefinition{ID: "in-a", Label: "", Type: domain.PortTypeData})
+	def.Attributes = append(def.Attributes, domain.AttributeDefinition{ID: "attr-a", Display: domain.DisplayNodeBody})
+	node := &domain.NodeInstance{ID: "test-node", Definition: def}
+	w := calcNodeWidth(node)
+	if w != 200 {
+		t.Errorf("width %d should be base width 200 when no port labels", w)
+	}
+}
+
+func TestCalcNodeWidth_NoGrowthWithoutBodyAttrs(t *testing.T) {
+	// Node with input labels but no body attrs keeps original width
+	node := makeNode(2, 1, 0, 200)
+	w := calcNodeWidth(node)
+	if w != 200 {
+		t.Errorf("width %d should be base width 200 when no body attrs", w)
+	}
+}
+
+func TestCalcNodeWidth_RespectsLargerBaseWidth(t *testing.T) {
+	// If base width is already larger than needed, keep it
+	node := makeNode(2, 1, 1, 300)
+	w := calcNodeWidth(node)
+	if w != 300 {
+		t.Errorf("width %d should be base width 300", w)
+	}
+}
+
+func TestBodyAttrX_ShiftsWhenInputLabelsPresent(t *testing.T) {
+	node := makeNode(2, 1, 1, 200)
+	x := bodyAttrX(node)
+	expected := 12 + inputLabelColWidth + colGap
+	if x != expected {
+		t.Errorf("bodyAttrX = %d, want %d", x, expected)
+	}
+}
+
+func TestBodyAttrX_DefaultsWhenNoInputLabels(t *testing.T) {
+	node := makeNode(0, 1, 1, 200)
+	x := bodyAttrX(node)
+	if x != 12 {
+		t.Errorf("bodyAttrX = %d, want 12 when no input labels", x)
+	}
+}
+
+func TestBodyAttrs_XMatchesBodyAttrX(t *testing.T) {
+	node := makeNode(2, 1, 2, 200)
+	attrs := bodyAttrs(node)
+	expectedX := bodyAttrX(node)
+	for _, a := range attrs {
+		if a.X != expectedX {
+			t.Errorf("bodyAttr X=%d, want %d", a.X, expectedX)
+		}
+	}
+}

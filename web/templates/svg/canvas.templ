@@ -91,7 +91,7 @@ templ Node(node *domain.NodeInstance) {
 		if node.Definition != nil {
 			for _, ba := range bodyAttrs(node) {
 				<text
-					x="12"
+					x={ fmt.Sprintf("%d", ba.X) }
 					y={ fmt.Sprintf("%d", ba.Y) }
 					class="node-attr-label"
 				>
@@ -210,19 +210,11 @@ templ nodeShape(node *domain.NodeInstance) {
 }
 
 func nodeWidth(node *domain.NodeInstance) string {
-	w := 200
-	if node.Definition != nil && node.Definition.Shape.Width > 0 {
-		w = node.Definition.Shape.Width
-	}
-	return fmt.Sprintf("%d", w)
+	return fmt.Sprintf("%d", calcNodeWidth(node))
 }
 
 func nodeWidthInset(node *domain.NodeInstance, inset int) string {
-	w := 200
-	if node.Definition != nil && node.Definition.Shape.Width > 0 {
-		w = node.Definition.Shape.Width
-	}
-	return fmt.Sprintf("%d", w-inset)
+	return fmt.Sprintf("%d", calcNodeWidth(node)-inset)
 }
 
 func nodeHeightInt(node *domain.NodeInstance) int {
@@ -296,11 +288,81 @@ func portClass(portType domain.PortType, isInput bool) string {
 }
 
 func nodeWidthInt(node *domain.NodeInstance) int {
-	w := 200
-	if node.Definition != nil && node.Definition.Shape.Width > 0 {
-		w = node.Definition.Shape.Width
+	return calcNodeWidth(node)
+}
+
+// Layout constants for three-column node layout
+const (
+	inputLabelColWidth  = 56
+	outputLabelColWidth = 56
+	colGap              = 8
+	minCenterWidth      = 100
+)
+
+func hasInputLabels(node *domain.NodeInstance) bool {
+	if node.Definition == nil {
+		return false
 	}
-	return w
+	for _, p := range node.Definition.Inputs {
+		if p.Label != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func hasOutputLabels(node *domain.NodeInstance) bool {
+	if node.Definition == nil {
+		return false
+	}
+	for _, p := range node.Definition.Outputs {
+		if p.Label != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func hasBodyAttrs(node *domain.NodeInstance) bool {
+	if node.Definition == nil {
+		return false
+	}
+	for _, a := range node.Definition.Attributes {
+		if a.Display == domain.DisplayNodeBody || a.Display == domain.DisplayBoth {
+			return true
+		}
+	}
+	return false
+}
+
+func calcNodeWidth(node *domain.NodeInstance) int {
+	baseWidth := 200
+	if node.Definition != nil && node.Definition.Shape.Width > 0 {
+		baseWidth = node.Definition.Shape.Width
+	}
+	hasIn := hasInputLabels(node)
+	hasOut := hasOutputLabels(node)
+	hasBody := hasBodyAttrs(node)
+	if hasBody && (hasIn || hasOut) {
+		needed := 12 + minCenterWidth + 12
+		if hasIn {
+			needed += inputLabelColWidth + colGap
+		}
+		if hasOut {
+			needed += outputLabelColWidth + colGap
+		}
+		if needed > baseWidth {
+			return needed
+		}
+	}
+	return baseWidth
+}
+
+func bodyAttrX(node *domain.NodeInstance) int {
+	if hasInputLabels(node) && hasBodyAttrs(node) {
+		return 12 + inputLabelColWidth + colGap
+	}
+	return 12
 }
 
 func portX(node *domain.NodeInstance, port domain.PortDefinition, isInput bool) string {
@@ -367,17 +429,20 @@ func boolStr(b bool) string {
 type bodyAttr struct {
 	Label string
 	Value string
+	X     int
 	Y     int
 }
 
 func bodyAttrs(node *domain.NodeInstance) []bodyAttr {
 	var result []bodyAttr
 	idx := 0
+	x := bodyAttrX(node)
 	for _, attr := range node.Definition.Attributes {
 		if attr.Display == domain.DisplayNodeBody || attr.Display == domain.DisplayBoth {
 			result = append(result, bodyAttr{
 				Label: attr.Label,
 				Value: attrStr(node.AttributeValues[attr.ID]),
+				X:     x,
 				Y:     52 + idx*20,
 			})
 			idx++
