@@ -53,6 +53,9 @@ func NewRouter(deps RouterDeps) http.Handler {
 	protected.HandleFunc("POST /api/workflows/{id}/undo", handleUndo(deps.WorkflowSvc))
 	protected.HandleFunc("POST /api/workflows/{id}/redo", handleRedo(deps.WorkflowSvc))
 
+	// Help modal (keyboard shortcuts)
+	protected.HandleFunc("GET /help", handleHelp())
+
 	// Node definition routes
 	protected.HandleFunc("GET /api/nodes/search", handleNodeSearch(deps.NodeRegistry))
 	protected.HandleFunc("GET /api/nodes", handleNodeList(deps.NodeRegistry))

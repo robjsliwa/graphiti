@@ -1,66 +1,33 @@
-// App initialization: wires all modules together
+// App initialization: wires canvas modules together
 import { CanvasEngine } from './canvas.js';
 import { CommandDispatcher } from './commands.js';
 import { DragManager } from './drag.js';
 import { ConnectManager } from './connect.js';
 import { SelectionManager } from './select.js';
 import { ClipboardManager } from './clipboard.js';
-import { DeployManager } from './deploy.js';
-import { ExecutionManager } from './execution.js';
 import { toast } from './toast.js';
 
-// Expose toast globally for use by any module
+// Expose toast globally for Alpine components and other modules
 window.toast = toast;
 
 const svg = document.getElementById('workflow-canvas');
 const wfId = document.getElementById('graphiti-data')?.dataset.workflowId;
-// Expose for modules that read window.GRAPHITI.workflowID
 if (wfId) window.GRAPHITI = { workflowID: wfId };
 
 if (svg && wfId) {
-  // Canvas engine (pan, zoom, viewport)
   const canvas = new CanvasEngine(svg);
   window.canvasEngine = canvas;
 
-  // Command dispatcher (sends mutations to server, undo/redo)
   const dispatcher = new CommandDispatcher(wfId);
   window.commandDispatcher = dispatcher;
 
-  // Selection manager (click, multi-select, node drag, delete)
   const selection = new SelectionManager(canvas, dispatcher);
   window.selectionManager = selection;
   dispatcher.selection = selection;
 
-  // Drag manager (palette to canvas)
-  const drag = new DragManager(canvas, dispatcher);
-  window.dragManager = drag;
+  new DragManager(canvas, dispatcher);
+  new ConnectManager(canvas, dispatcher);
 
-  // Connect manager (port-to-port edge drawing)
-  const connect = new ConnectManager(canvas, dispatcher);
-  window.connectManager = connect;
-
-  // Clipboard manager (copy, cut, paste, duplicate)
   const clipboard = new ClipboardManager(dispatcher);
   window.clipboardManager = clipboard;
-
-  // Deploy manager (deploy, export, version menu)
-  const deploy = new DeployManager(wfId);
-  window.deployManager = deploy;
-
-  // Execution manager (mode switching, WebSocket, status overlays)
-  const execution = new ExecutionManager(wfId);
-  window.executionManager = execution;
-
-  // Update node SVG when attributes are saved from config panel
-  document.body.addEventListener('nodeUpdated', (e) => {
-    const { nodeId, label, attributes } = e.detail;
-    const nodeEl = svg.querySelector(`[data-node-id="${nodeId}"]`);
-    if (!nodeEl) return;
-    const titleEl = nodeEl.querySelector('.node-title');
-    if (titleEl) titleEl.textContent = label;
-    const attrEls = nodeEl.querySelectorAll('.node-attr-label');
-    (attributes || []).forEach((attr, i) => {
-      if (attrEls[i]) attrEls[i].textContent = `${attr.label}: ${attr.value}`;
-    });
-  });
 }

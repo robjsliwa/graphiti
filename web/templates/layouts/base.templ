@@ -2,12 +2,17 @@ package layouts
 
 templ Base(title string) {
 	<!DOCTYPE html>
-	<html lang="en" data-theme="light">
+	<html lang="en"
+		x-data="{ theme: localStorage.getItem('graphiti-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') }"
+		x-bind:data-theme="theme"
+		x-init="$watch('theme', val => localStorage.setItem('graphiti-theme', val))">
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 		<title>{ title } - Graphiti</title>
+		<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
 		<script src="https://unpkg.com/htmx.org@2.0.4"></script>
+		<style>[x-cloak] { display: none !important; }</style>
 		<link rel="stylesheet" href="/static/css/base.css"/>
 		<link rel="stylesheet" href="/static/css/components.css"/>
 		<link rel="stylesheet" href="/static/css/panels.css"/>

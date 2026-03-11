@@ -80,20 +80,20 @@ func Builder(data BuilderData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</span> <button class=\"btn btn-icon\" id=\"theme-toggle\" title=\"Toggle theme\">&#x263E;</button><div class=\"deploy-dropdown\"><button class=\"btn btn-success\" id=\"deploy-btn\">Deploy</button> <button class=\"btn btn-success deploy-chevron\" id=\"deploy-chevron\" title=\"Deploy options\">&#x25BE;</button><div class=\"deploy-menu\" id=\"deploy-menu\" hidden><button class=\"deploy-menu-item\" data-action=\"deploy\" data-target=\"production\">Deploy to Production</button> <button class=\"deploy-menu-item\" data-action=\"deploy\" data-target=\"staging\">Deploy to Staging</button><hr><button class=\"deploy-menu-item\" data-action=\"save-draft\">Save as Draft</button><hr><button class=\"deploy-menu-item\" data-action=\"export\" data-format=\"yaml\">Export as YAML</button> <button class=\"deploy-menu-item\" data-action=\"export\" data-format=\"json\">Export as JSON</button></div></div><span class=\"nav-user\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</span> <button class=\"btn btn-icon\" id=\"theme-toggle\" title=\"Toggle theme\" @click=\"theme = theme === 'dark' ? 'light' : 'dark'\" x-text=\"theme === 'dark' ? '\\u2600' : '\\u263E'\">&#x263E;</button><div class=\"deploy-dropdown\" x-data=\"deployManager\" @click.outside=\"menuOpen = false\"><button class=\"btn btn-success\" id=\"deploy-btn\" :disabled=\"isDeploying\" :class=\"{ 'deploy-success': deployStatus === 'success', 'deploy-error': deployStatus === 'error' }\" x-text=\"isDeploying ? 'Deploying...' : (deployStatus === 'success' ? '\\u2713 Deployed' : 'Deploy')\" @click=\"deploy('production')\">Deploy</button> <button class=\"btn btn-success deploy-chevron\" title=\"Deploy options\" @click.stop=\"menuOpen = !menuOpen\">&#x25BE;</button><div class=\"deploy-menu\" x-show=\"menuOpen\" x-cloak @click.stop><button class=\"deploy-menu-item\" @click=\"deploy('production'); menuOpen = false\">Deploy to Production</button> <button class=\"deploy-menu-item\" @click=\"deploy('staging'); menuOpen = false\">Deploy to Staging</button><hr><button class=\"deploy-menu-item\" @click=\"toast.info('Workflow is auto-saved'); menuOpen = false\">Save as Draft</button><hr><button class=\"deploy-menu-item\" @click=\"exportWf('yaml'); menuOpen = false\">Export as YAML</button> <button class=\"deploy-menu-item\" @click=\"exportWf('json'); menuOpen = false\">Export as JSON</button></div></div><span class=\"nav-user\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(data.Username)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 45, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 57, Col: 42}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</span></div></nav><div class=\"mode-tabs\"><button class=\"mode-tab active\" id=\"mode-builder\" data-mode=\"builder\">Builder</button> <button class=\"mode-tab\" id=\"mode-execution\" data-mode=\"execution\">Execution</button></div><div class=\"builder-layout\"><aside class=\"panel panel-left\" id=\"palette-panel\"><div id=\"panel-left-builder\"><div class=\"panel-header\"><h2>Components</h2><input type=\"search\" placeholder=\"Search nodes...\" class=\"search-input\" name=\"q\" hx-get=\"/api/nodes/search\" hx-trigger=\"keyup changed delay:200ms\" hx-target=\"#node-palette\"></div><div id=\"node-palette\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</span></div></nav><div x-data=\"executionMode\"><div class=\"mode-tabs\"><button class=\"mode-tab\" :class=\"{ active: mode === 'builder' }\" @click=\"setMode('builder')\">Builder</button> <button class=\"mode-tab\" :class=\"{ active: mode === 'execution' }\" @click=\"setMode('execution')\">Execution</button></div><div class=\"builder-layout\"><aside class=\"panel panel-left\" id=\"palette-panel\"><div id=\"panel-left-builder\" x-show=\"mode === 'builder'\"><div class=\"panel-header\"><h2>Components</h2><input type=\"search\" placeholder=\"Search nodes...\" class=\"search-input\" name=\"q\" hx-get=\"/api/nodes/search\" hx-trigger=\"keyup changed delay:200ms\" hx-target=\"#node-palette\"></div><div id=\"node-palette\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -101,14 +101,14 @@ func Builder(data BuilderData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div></div><div id=\"panel-left-execution\" style=\"display:none\"><div class=\"panel-header\"><h2>Run History</h2></div><div id=\"execution-run-list\" hx-get=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div></div><div id=\"panel-left-execution\" x-show=\"mode === 'execution'\" x-cloak><div class=\"panel-header\"><h2>Run History</h2></div><div id=\"execution-run-list\" hx-get=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs("/api/workflows/" + data.Workflow.ID + "/runs")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 76, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 91, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -122,20 +122,20 @@ func Builder(data BuilderData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"canvas-hud\"><div class=\"zoom-controls\"><button class=\"btn btn-icon\" id=\"zoom-out\" title=\"Zoom out\">-</button> <span id=\"zoom-level\">100%</span> <button class=\"btn btn-icon\" id=\"zoom-in\" title=\"Zoom in\">+</button> <button class=\"btn btn-icon\" id=\"zoom-fit\" title=\"Fit to view\">Fit</button></div><div class=\"undo-redo\" id=\"undo-redo-controls\"><button class=\"btn btn-icon\" id=\"undo-btn\" title=\"Undo (Ctrl+Z)\" disabled>&#x21A9;</button> <button class=\"btn btn-icon\" id=\"redo-btn\" title=\"Redo (Ctrl+Shift+Z)\" disabled>&#x21AA;</button></div></div></main><aside class=\"panel panel-right\" id=\"config-panel\"><div class=\"panel-header\"><h2>Configuration</h2></div><div class=\"panel-body\" id=\"config-content\"><div class=\"empty-config\"><p>Select a node to configure</p></div></div></aside></div><div id=\"graphiti-data\" data-workflow-id=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"canvas-hud\"><div class=\"zoom-controls\"><button class=\"btn btn-icon\" id=\"zoom-out\" title=\"Zoom out\">-</button> <span id=\"zoom-level\">100%</span> <button class=\"btn btn-icon\" id=\"zoom-in\" title=\"Zoom in\">+</button> <button class=\"btn btn-icon\" id=\"zoom-fit\" title=\"Fit to view\">Fit</button></div><div class=\"undo-redo\" id=\"undo-redo-controls\"><button class=\"btn btn-icon\" id=\"undo-btn\" title=\"Undo (Ctrl+Z)\" disabled>&#x21A9;</button> <button class=\"btn btn-icon\" id=\"redo-btn\" title=\"Redo (Ctrl+Shift+Z)\" disabled>&#x21AA;</button></div></div></main><aside class=\"panel panel-right\" id=\"config-panel\"><div class=\"panel-header\"><h2>Configuration</h2></div><div class=\"panel-body\" id=\"config-content\"><div class=\"empty-config\"><p>Select a node to configure</p></div></div></aside></div></div><div id=\"graphiti-data\" data-workflow-id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(data.Workflow.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 110, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 126, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" hidden></div><script src=\"/static/js/theme.js\"></script> <script type=\"module\" src=\"/static/js/app.js\"></script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" hidden></div><script src=\"/static/js/components.js\"></script> <script type=\"module\" src=\"/static/js/app.js\"></script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
