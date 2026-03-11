@@ -22,6 +22,8 @@ templ ConfigPanel(data ConfigPanelData) {
 			hx-patch={ "/api/workflows/" + data.WorkflowID + "/nodes/" + data.Node.ID + "/attributes" }
 			hx-swap="none"
 			autocomplete="off"
+			data-node-label={ data.Node.Label }
+			hx-on::after-request="if(event.detail.successful) window.toast.success(this.dataset.nodeLabel + ' saved successfully')"
 		>
 			<div class="config-attributes">
 				for _, attr := range data.Node.Definition.Attributes {
@@ -94,11 +96,12 @@ templ renderAttributeInput(data ConfigPanelData, attr domain.AttributeDefinition
 			</select>
 		case domain.AttrTypeSecret:
 			<input
-				type="password"
+				type="text"
 				id={ "attr-" + attr.ID }
 				name={ attr.ID }
 				placeholder="Enter secret..."
-				class="input"
+				class="input input-secret"
+				autocomplete="off"
 			/>
 		default:
 			<input
