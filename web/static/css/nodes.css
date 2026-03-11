@@ -24,6 +24,14 @@
 .port-control { stroke: var(--node-control); }
 .port-error { stroke: var(--danger); }
 
+.port-label {
+  font-size: 10px;
+  fill: var(--text-muted);
+  pointer-events: none;
+}
+.port-label-input { text-anchor: start; }
+.port-label-output { text-anchor: end; }
+
 .edge {
   pointer-events: stroke;
   cursor: pointer;

@@ -118,9 +118,20 @@ templ Port(node *domain.NodeInstance, port domain.PortDefinition, isInput bool, 
 		data-port-type={ string(port.Type) }
 		data-is-input={ boolStr(isInput) }
 		cx={ portX(node, port, isInput) }
-		cy={ portY(node, port, index) }
+		cy={ portY(node, port, isInput, index) }
 		r="6"
-	/>
+	>
+		<title>{ port.Label }</title>
+	</circle>
+	if port.Label != "" {
+		<text
+			class={ portLabelClass(isInput) }
+			x={ portLabelX(node, isInput) }
+			y={ portLabelY(node, isInput, index) }
+		>
+			{ port.Label }
+		</text>
+	}
 }
 
 templ Edge(wf *domain.Workflow, edge domain.Edge) {
@@ -129,6 +140,8 @@ templ Edge(wf *domain.Workflow, edge domain.Edge) {
 		data-edge-id={ edge.ID }
 		data-source-node={ edge.SourceNodeID }
 		data-target-node={ edge.TargetNodeID }
+		data-source-port={ edge.SourcePortID }
+		data-target-port={ edge.TargetPortID }
 		d={ edgePath(wf, edge) }
 		fill="none"
 		stroke="var(--edge-color, #94a3b8)"
@@ -212,7 +225,7 @@ func nodeWidthInset(node *domain.NodeInstance, inset int) string {
 	return fmt.Sprintf("%d", w-inset)
 }
 
-func nodeHeight(node *domain.NodeInstance) string {
+func nodeHeightInt(node *domain.NodeInstance) int {
 	h := 80
 	if node.Definition != nil {
 		bodyAttrs := 0
@@ -221,29 +234,36 @@ func nodeHeight(node *domain.NodeInstance) string {
 				bodyAttrs++
 			}
 		}
-		h = 40 + bodyAttrs*20 + 8
+		inputCount := len(node.Definition.Inputs)
+		outputCount := len(node.Definition.Outputs)
+		maxPorts := inputCount
+		if outputCount > maxPorts {
+			maxPorts = outputCount
+		}
+
+		headerHeight := 36
+		bottomPadding := 12
+		portSpacing := 24
+		bodyAttrHeight := bodyAttrs * 20
+		portsHeight := maxPorts * portSpacing
+		contentHeight := bodyAttrHeight
+		if portsHeight > contentHeight {
+			contentHeight = portsHeight
+		}
+		h = headerHeight + contentHeight + bottomPadding
 		if h < 60 {
 			h = 60
 		}
 	}
-	return fmt.Sprintf("%d", h)
+	return h
+}
+
+func nodeHeight(node *domain.NodeInstance) string {
+	return fmt.Sprintf("%d", nodeHeightInt(node))
 }
 
 func nodeHeightInset(node *domain.NodeInstance, inset int) string {
-	h := 80
-	if node.Definition != nil {
-		bodyAttrs := 0
-		for _, a := range node.Definition.Attributes {
-			if a.Display == domain.DisplayNodeBody || a.Display == domain.DisplayBoth {
-				bodyAttrs++
-			}
-		}
-		h = 40 + bodyAttrs*20 + 8
-		if h < 60 {
-			h = 60
-		}
-	}
-	return fmt.Sprintf("%d", h-inset)
+	return fmt.Sprintf("%d", nodeHeightInt(node)-inset)
 }
 
 func headerBg(node *domain.NodeInstance) string {
@@ -275,37 +295,66 @@ func portClass(portType domain.PortType, isInput bool) string {
 	return "port-" + string(portType) + " port-" + dir
 }
 
-func portX(node *domain.NodeInstance, port domain.PortDefinition, isInput bool) string {
+func nodeWidthInt(node *domain.NodeInstance) int {
 	w := 200
 	if node.Definition != nil && node.Definition.Shape.Width > 0 {
 		w = node.Definition.Shape.Width
 	}
-	switch port.Position {
-	case domain.PortPositionLeftCenter:
-		return "0"
-	case domain.PortPositionRightCenter, domain.PortPositionRightTop, domain.PortPositionRightBottom:
-		return fmt.Sprintf("%d", w)
-	default:
-		if isInput {
-			return "0"
-		}
-		return fmt.Sprintf("%d", w)
-	}
+	return w
 }
 
-func portY(node *domain.NodeInstance, port domain.PortDefinition, index int) string {
-	switch port.Position {
-	case domain.PortPositionTopCenter:
+func portX(node *domain.NodeInstance, port domain.PortDefinition, isInput bool) string {
+	if isInput {
 		return "0"
-	case domain.PortPositionBottomCenter:
-		return nodeHeight(node)
-	case domain.PortPositionRightTop:
-		return fmt.Sprintf("%d", 20+index*20)
-	case domain.PortPositionRightBottom:
-		return fmt.Sprintf("%d", 50+index*20)
-	default:
-		return fmt.Sprintf("%d", 30+index*20)
 	}
+	return fmt.Sprintf("%d", nodeWidthInt(node))
+}
+
+// portYInt calculates the Y position for a port using auto-distribution.
+// Ports are evenly centered within the content area below the header.
+func portYInt(node *domain.NodeInstance, isInput bool, index int) int {
+	headerHeight := 36
+	bottomPadding := 12
+	portSpacing := 24
+
+	count := 0
+	if node.Definition != nil {
+		if isInput {
+			count = len(node.Definition.Inputs)
+		} else {
+			count = len(node.Definition.Outputs)
+		}
+	}
+	if count == 0 {
+		return headerHeight
+	}
+
+	h := nodeHeightInt(node)
+	contentHeight := h - headerHeight - bottomPadding
+	startY := headerHeight + (contentHeight-(count-1)*portSpacing)/2
+	return startY + index*portSpacing
+}
+
+func portY(node *domain.NodeInstance, port domain.PortDefinition, isInput bool, index int) string {
+	return fmt.Sprintf("%d", portYInt(node, isInput, index))
+}
+
+func portLabelClass(isInput bool) string {
+	if isInput {
+		return "port-label port-label-input"
+	}
+	return "port-label port-label-output"
+}
+
+func portLabelX(node *domain.NodeInstance, isInput bool) string {
+	if isInput {
+		return "12"
+	}
+	return fmt.Sprintf("%d", nodeWidthInt(node)-12)
+}
+
+func portLabelY(node *domain.NodeInstance, isInput bool, index int) string {
+	return fmt.Sprintf("%d", portYInt(node, isInput, index)+4)
 }
 
 func boolStr(b bool) string {
@@ -347,6 +396,25 @@ func attrStr(v any) string {
 	return fmt.Sprintf("%v", v)
 }
 
+// findPortY looks up the Y position of a specific port on a node.
+func findPortY(node *domain.NodeInstance, portID string) float64 {
+	if node.Definition == nil {
+		return 36 // fallback to header height
+	}
+	for i, p := range node.Definition.Outputs {
+		if p.ID == portID {
+			return float64(portYInt(node, false, i))
+		}
+	}
+	for i, p := range node.Definition.Inputs {
+		if p.ID == portID {
+			return float64(portYInt(node, true, i))
+		}
+	}
+	// Fallback: center of node
+	return float64(nodeHeightInt(node)) / 2
+}
+
 func edgePath(wf *domain.Workflow, edge domain.Edge) string {
 	srcNode := wf.FindNode(edge.SourceNodeID)
 	tgtNode := wf.FindNode(edge.TargetNodeID)
@@ -354,15 +422,12 @@ func edgePath(wf *domain.Workflow, edge domain.Edge) string {
 		return ""
 	}
 
-	srcW := 200.0
-	if srcNode.Definition != nil && srcNode.Definition.Shape.Width > 0 {
-		srcW = float64(srcNode.Definition.Shape.Width)
-	}
+	srcW := float64(nodeWidthInt(srcNode))
 
 	x1 := srcNode.X + srcW
-	y1 := srcNode.Y + 30
+	y1 := srcNode.Y + findPortY(srcNode, edge.SourcePortID)
 	x2 := tgtNode.X
-	y2 := tgtNode.Y + 30
+	y2 := tgtNode.Y + findPortY(tgtNode, edge.TargetPortID)
 	cpOffset := (x2 - x1) * 0.5
 	if cpOffset < 50 {
 		cpOffset = 50
@@ -376,22 +441,16 @@ func edgePath(wf *domain.Workflow, edge domain.Edge) string {
 }
 
 func diamondPoints(node *domain.NodeInstance) string {
-	w := 200
-	if node.Definition != nil && node.Definition.Shape.Width > 0 {
-		w = node.Definition.Shape.Width
-	}
-	h := 80
+	w := nodeWidthInt(node)
+	h := nodeHeightInt(node)
 	hw := w / 2
 	hh := h / 2
 	return fmt.Sprintf("%d %d, %d %d, %d %d, %d %d", hw, 0, w, hh, hw, h, 0, hh)
 }
 
 func hexagonPoints(node *domain.NodeInstance) string {
-	w := 200
-	if node.Definition != nil && node.Definition.Shape.Width > 0 {
-		w = node.Definition.Shape.Width
-	}
-	h := 80
+	w := nodeWidthInt(node)
+	h := nodeHeightInt(node)
 	offset := 20
 	return fmt.Sprintf("%d %d, %d %d, %d %d, %d %d, %d %d, %d %d",
 		offset, 0,

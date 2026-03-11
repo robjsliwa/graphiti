@@ -420,17 +420,93 @@ func Port(node *domain.NodeInstance, port domain.PortDefinition, isInput bool, i
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var25 string
-		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(portY(node, port, index))
+		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(portY(node, port, isInput, index))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 121, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 121, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\" r=\"6\"></circle>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\" r=\"6\"><title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var26 string
+		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(port.Label)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 124, Col: 21}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</title></circle> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if port.Label != "" {
+			var templ_7745c5c3_Var27 = []any{portLabelClass(isInput)}
+			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var27...)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<text class=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var28 string
+			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var27).String())
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 1, Col: 0}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\" x=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var29 string
+			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(portLabelX(node, isInput))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 129, Col: 32}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "\" y=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var30 string
+			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(portLabelY(node, isInput, index))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 130, Col: 39}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var31 string
+			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(port.Label)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 132, Col: 15}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</text>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
 		return nil
 	})
@@ -452,64 +528,90 @@ func Edge(wf *domain.Workflow, edge domain.Edge) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var26 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var26 == nil {
-			templ_7745c5c3_Var26 = templ.NopComponent
+		templ_7745c5c3_Var32 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var32 == nil {
+			templ_7745c5c3_Var32 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<path class=\"edge\" data-edge-id=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<path class=\"edge\" data-edge-id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var27 string
-		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(edge.ID)
+		var templ_7745c5c3_Var33 string
+		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(edge.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 129, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 140, Col: 24}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\" data-source-node=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var28 string
-		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(edge.SourceNodeID)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 130, Col: 38}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" data-source-node=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\" data-target-node=\"")
+		var templ_7745c5c3_Var34 string
+		templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(edge.SourceNodeID)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 141, Col: 38}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var29 string
-		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(edge.TargetNodeID)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 131, Col: 38}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\" data-target-node=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "\" d=\"")
+		var templ_7745c5c3_Var35 string
+		templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(edge.TargetNodeID)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 142, Col: 38}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var30 string
-		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(edgePath(wf, edge))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 132, Col: 24}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "\" data-source-port=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "\" fill=\"none\" stroke=\"var(--edge-color, #94a3b8)\" stroke-width=\"2\" marker-end=\"url(#arrowhead)\"></path>")
+		var templ_7745c5c3_Var36 string
+		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(edge.SourcePortID)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 143, Col: 38}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "\" data-target-port=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var37 string
+		templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(edge.TargetPortID)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 144, Col: 38}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "\" d=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var38 string
+		templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(edgePath(wf, edge))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 145, Col: 24}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "\" fill=\"none\" stroke=\"var(--edge-color, #94a3b8)\" stroke-width=\"2\" marker-end=\"url(#arrowhead)\"></path>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -533,132 +635,132 @@ func nodeShape(node *domain.NodeInstance) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var31 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var31 == nil {
-			templ_7745c5c3_Var31 = templ.NopComponent
+		templ_7745c5c3_Var39 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var39 == nil {
+			templ_7745c5c3_Var39 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		if node.Definition != nil && node.Definition.Shape.Type == domain.ShapeDiamond {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<polygon points=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<polygon points=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var32 string
-			templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(diamondPoints(node))
+			var templ_7745c5c3_Var40 string
+			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(diamondPoints(node))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 143, Col: 31}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 156, Col: 31}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "\" class=\"node-bg\" fill=\"var(--surface)\" stroke=\"var(--border)\" stroke-width=\"1.5\"></polygon>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "\" class=\"node-bg\" fill=\"var(--surface)\" stroke=\"var(--border)\" stroke-width=\"1.5\"></polygon>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if node.Definition != nil && node.Definition.Shape.Type == domain.ShapeHexagon {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<polygon points=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<polygon points=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var33 string
-			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(hexagonPoints(node))
+			var templ_7745c5c3_Var41 string
+			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(hexagonPoints(node))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 151, Col: 31}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 164, Col: 31}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\" class=\"node-bg\" fill=\"var(--surface)\" stroke=\"var(--border)\" stroke-width=\"1.5\"></polygon>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "\" class=\"node-bg\" fill=\"var(--surface)\" stroke=\"var(--border)\" stroke-width=\"1.5\"></polygon>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if node.Definition != nil && node.Definition.Shape.Type == domain.ShapeSubWorkflow {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<!-- Double border for sub-workflow --> <rect x=\"0\" y=\"0\" width=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<!-- Double border for sub-workflow --> <rect x=\"0\" y=\"0\" width=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var34 string
-			templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(nodeWidth(node))
+			var templ_7745c5c3_Var42 string
+			templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(nodeWidth(node))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 162, Col: 26}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 175, Col: 26}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "\" height=\"")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var35 string
-			templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(nodeHeight(node))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 163, Col: 28}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "\" height=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "\" rx=\"8\" ry=\"8\" class=\"node-bg\" fill=\"var(--surface)\" stroke=\"var(--border)\" stroke-width=\"1.5\"></rect> <rect x=\"3\" y=\"3\" width=\"")
+			var templ_7745c5c3_Var43 string
+			templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(nodeHeight(node))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 176, Col: 28}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var36 string
-			templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(nodeWidthInset(node, 6))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 174, Col: 34}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "\" rx=\"8\" ry=\"8\" class=\"node-bg\" fill=\"var(--surface)\" stroke=\"var(--border)\" stroke-width=\"1.5\"></rect> <rect x=\"3\" y=\"3\" width=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "\" height=\"")
+			var templ_7745c5c3_Var44 string
+			templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(nodeWidthInset(node, 6))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 187, Col: 34}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var37 string
-			templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(nodeHeightInset(node, 6))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 175, Col: 36}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "\" height=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "\" rx=\"6\" ry=\"6\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"1\"></rect>")
+			var templ_7745c5c3_Var45 string
+			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(nodeHeightInset(node, 6))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 188, Col: 36}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "\" rx=\"6\" ry=\"6\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"1\"></rect>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<!-- Default rounded rect --> <rect x=\"0\" y=\"0\" width=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<!-- Default rounded rect --> <rect x=\"0\" y=\"0\" width=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var38 string
-			templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(nodeWidth(node))
+			var templ_7745c5c3_Var46 string
+			templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(nodeWidth(node))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 187, Col: 26}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 200, Col: 26}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "\" height=\"")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var39 string
-			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(nodeHeight(node))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 188, Col: 28}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "\" height=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "\" rx=\"8\" ry=\"8\" class=\"node-bg\" fill=\"var(--surface)\" stroke=\"var(--border)\" stroke-width=\"1.5\"></rect>")
+			var templ_7745c5c3_Var47 string
+			templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(nodeHeight(node))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 201, Col: 28}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "\" rx=\"8\" ry=\"8\" class=\"node-bg\" fill=\"var(--surface)\" stroke=\"var(--border)\" stroke-width=\"1.5\"></rect>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -683,7 +785,7 @@ func nodeWidthInset(node *domain.NodeInstance, inset int) string {
 	return fmt.Sprintf("%d", w-inset)
 }
 
-func nodeHeight(node *domain.NodeInstance) string {
+func nodeHeightInt(node *domain.NodeInstance) int {
 	h := 80
 	if node.Definition != nil {
 		bodyAttrs := 0
@@ -692,29 +794,36 @@ func nodeHeight(node *domain.NodeInstance) string {
 				bodyAttrs++
 			}
 		}
-		h = 40 + bodyAttrs*20 + 8
+		inputCount := len(node.Definition.Inputs)
+		outputCount := len(node.Definition.Outputs)
+		maxPorts := inputCount
+		if outputCount > maxPorts {
+			maxPorts = outputCount
+		}
+
+		headerHeight := 36
+		bottomPadding := 12
+		portSpacing := 24
+		bodyAttrHeight := bodyAttrs * 20
+		portsHeight := maxPorts * portSpacing
+		contentHeight := bodyAttrHeight
+		if portsHeight > contentHeight {
+			contentHeight = portsHeight
+		}
+		h = headerHeight + contentHeight + bottomPadding
 		if h < 60 {
 			h = 60
 		}
 	}
-	return fmt.Sprintf("%d", h)
+	return h
+}
+
+func nodeHeight(node *domain.NodeInstance) string {
+	return fmt.Sprintf("%d", nodeHeightInt(node))
 }
 
 func nodeHeightInset(node *domain.NodeInstance, inset int) string {
-	h := 80
-	if node.Definition != nil {
-		bodyAttrs := 0
-		for _, a := range node.Definition.Attributes {
-			if a.Display == domain.DisplayNodeBody || a.Display == domain.DisplayBoth {
-				bodyAttrs++
-			}
-		}
-		h = 40 + bodyAttrs*20 + 8
-		if h < 60 {
-			h = 60
-		}
-	}
-	return fmt.Sprintf("%d", h-inset)
+	return fmt.Sprintf("%d", nodeHeightInt(node)-inset)
 }
 
 func headerBg(node *domain.NodeInstance) string {
@@ -746,37 +855,66 @@ func portClass(portType domain.PortType, isInput bool) string {
 	return "port-" + string(portType) + " port-" + dir
 }
 
-func portX(node *domain.NodeInstance, port domain.PortDefinition, isInput bool) string {
+func nodeWidthInt(node *domain.NodeInstance) int {
 	w := 200
 	if node.Definition != nil && node.Definition.Shape.Width > 0 {
 		w = node.Definition.Shape.Width
 	}
-	switch port.Position {
-	case domain.PortPositionLeftCenter:
-		return "0"
-	case domain.PortPositionRightCenter, domain.PortPositionRightTop, domain.PortPositionRightBottom:
-		return fmt.Sprintf("%d", w)
-	default:
-		if isInput {
-			return "0"
-		}
-		return fmt.Sprintf("%d", w)
-	}
+	return w
 }
 
-func portY(node *domain.NodeInstance, port domain.PortDefinition, index int) string {
-	switch port.Position {
-	case domain.PortPositionTopCenter:
+func portX(node *domain.NodeInstance, port domain.PortDefinition, isInput bool) string {
+	if isInput {
 		return "0"
-	case domain.PortPositionBottomCenter:
-		return nodeHeight(node)
-	case domain.PortPositionRightTop:
-		return fmt.Sprintf("%d", 20+index*20)
-	case domain.PortPositionRightBottom:
-		return fmt.Sprintf("%d", 50+index*20)
-	default:
-		return fmt.Sprintf("%d", 30+index*20)
 	}
+	return fmt.Sprintf("%d", nodeWidthInt(node))
+}
+
+// portYInt calculates the Y position for a port using auto-distribution.
+// Ports are evenly centered within the content area below the header.
+func portYInt(node *domain.NodeInstance, isInput bool, index int) int {
+	headerHeight := 36
+	bottomPadding := 12
+	portSpacing := 24
+
+	count := 0
+	if node.Definition != nil {
+		if isInput {
+			count = len(node.Definition.Inputs)
+		} else {
+			count = len(node.Definition.Outputs)
+		}
+	}
+	if count == 0 {
+		return headerHeight
+	}
+
+	h := nodeHeightInt(node)
+	contentHeight := h - headerHeight - bottomPadding
+	startY := headerHeight + (contentHeight-(count-1)*portSpacing)/2
+	return startY + index*portSpacing
+}
+
+func portY(node *domain.NodeInstance, port domain.PortDefinition, isInput bool, index int) string {
+	return fmt.Sprintf("%d", portYInt(node, isInput, index))
+}
+
+func portLabelClass(isInput bool) string {
+	if isInput {
+		return "port-label port-label-input"
+	}
+	return "port-label port-label-output"
+}
+
+func portLabelX(node *domain.NodeInstance, isInput bool) string {
+	if isInput {
+		return "12"
+	}
+	return fmt.Sprintf("%d", nodeWidthInt(node)-12)
+}
+
+func portLabelY(node *domain.NodeInstance, isInput bool, index int) string {
+	return fmt.Sprintf("%d", portYInt(node, isInput, index)+4)
 }
 
 func boolStr(b bool) string {
@@ -818,6 +956,25 @@ func attrStr(v any) string {
 	return fmt.Sprintf("%v", v)
 }
 
+// findPortY looks up the Y position of a specific port on a node.
+func findPortY(node *domain.NodeInstance, portID string) float64 {
+	if node.Definition == nil {
+		return 36 // fallback to header height
+	}
+	for i, p := range node.Definition.Outputs {
+		if p.ID == portID {
+			return float64(portYInt(node, false, i))
+		}
+	}
+	for i, p := range node.Definition.Inputs {
+		if p.ID == portID {
+			return float64(portYInt(node, true, i))
+		}
+	}
+	// Fallback: center of node
+	return float64(nodeHeightInt(node)) / 2
+}
+
 func edgePath(wf *domain.Workflow, edge domain.Edge) string {
 	srcNode := wf.FindNode(edge.SourceNodeID)
 	tgtNode := wf.FindNode(edge.TargetNodeID)
@@ -825,15 +982,12 @@ func edgePath(wf *domain.Workflow, edge domain.Edge) string {
 		return ""
 	}
 
-	srcW := 200.0
-	if srcNode.Definition != nil && srcNode.Definition.Shape.Width > 0 {
-		srcW = float64(srcNode.Definition.Shape.Width)
-	}
+	srcW := float64(nodeWidthInt(srcNode))
 
 	x1 := srcNode.X + srcW
-	y1 := srcNode.Y + 30
+	y1 := srcNode.Y + findPortY(srcNode, edge.SourcePortID)
 	x2 := tgtNode.X
-	y2 := tgtNode.Y + 30
+	y2 := tgtNode.Y + findPortY(tgtNode, edge.TargetPortID)
 	cpOffset := (x2 - x1) * 0.5
 	if cpOffset < 50 {
 		cpOffset = 50
@@ -847,22 +1001,16 @@ func edgePath(wf *domain.Workflow, edge domain.Edge) string {
 }
 
 func diamondPoints(node *domain.NodeInstance) string {
-	w := 200
-	if node.Definition != nil && node.Definition.Shape.Width > 0 {
-		w = node.Definition.Shape.Width
-	}
-	h := 80
+	w := nodeWidthInt(node)
+	h := nodeHeightInt(node)
 	hw := w / 2
 	hh := h / 2
 	return fmt.Sprintf("%d %d, %d %d, %d %d, %d %d", hw, 0, w, hh, hw, h, 0, hh)
 }
 
 func hexagonPoints(node *domain.NodeInstance) string {
-	w := 200
-	if node.Definition != nil && node.Definition.Shape.Width > 0 {
-		w = node.Definition.Shape.Width
-	}
-	h := 80
+	w := nodeWidthInt(node)
+	h := nodeHeightInt(node)
 	offset := 20
 	return fmt.Sprintf("%d %d, %d %d, %d %d, %d %d, %d %d, %d %d",
 		offset, 0,

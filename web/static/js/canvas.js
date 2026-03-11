@@ -134,6 +134,12 @@ export class CanvasEngine {
     }
   }
 
+  // Look up actual port cy from the DOM port circle element
+  _domPortY(nodeEl, portId) {
+    const port = nodeEl.querySelector(`[data-port-id="${portId}"]`);
+    return port ? parseFloat(port.getAttribute('cy')) : 36;
+  }
+
   // Update edges connected to a node during drag
   updateEdgesForNode(nodeId) {
     this.edgeLayer.querySelectorAll('.edge').forEach(el => {
@@ -143,7 +149,9 @@ export class CanvasEngine {
       if (!srcEl || !tgtEl) return;
       const sp = this.getNodePosition(srcEl), tp = this.getNodePosition(tgtEl);
       const sw = parseInt(srcEl.querySelector('.node-header')?.getAttribute('width') || '200');
-      const x1 = sp.x + sw, y1 = sp.y + 30, x2 = tp.x, y2 = tp.y + 30;
+      const srcPortY = this._domPortY(srcEl, el.dataset.sourcePort || el.getAttribute('data-source-port'));
+      const tgtPortY = this._domPortY(tgtEl, el.dataset.targetPort || el.getAttribute('data-target-port'));
+      const x1 = sp.x + sw, y1 = sp.y + srcPortY, x2 = tp.x, y2 = tp.y + tgtPortY;
       const cp = Math.max(50, (x2 - x1) * 0.5);
       el.setAttribute('d', `M ${x1} ${y1} C ${x1+cp} ${y1}, ${x2-cp} ${y2}, ${x2} ${y2}`);
     });
@@ -167,7 +175,7 @@ export class CanvasEngine {
     const shape = def.shape || {};
     const w = shape.width || 200;
     const bodyAttrs = (def.attributes || []).filter(a => a.display === 'node-body' || a.display === 'both');
-    const h = Math.max(60, 40 + bodyAttrs.length * 20 + 8);
+    const h = this._calcNodeHeight(def, bodyAttrs.length);
     const hdrBg = shape.headerBackground || 'var(--surface-2)';
     const hdrColor = shape.headerColor || 'var(--text)';
 
@@ -176,10 +184,10 @@ export class CanvasEngine {
 
     // Background shape
     if (shape.type === 'diamond') {
-      g.appendChild(el('polygon', { points: `${w/2} 0, ${w} 40, ${w/2} 80, 0 40`,
+      g.appendChild(el('polygon', { points: `${w/2} 0, ${w} ${h/2}, ${w/2} ${h}, 0 ${h/2}`,
         class: 'node-bg', fill: 'var(--surface)', stroke: 'var(--border)', 'stroke-width': '1.5' }));
     } else if (shape.type === 'hexagon') {
-      g.appendChild(el('polygon', { points: `20 0, ${w-20} 0, ${w} 40, ${w-20} 80, 20 80, 0 40`,
+      g.appendChild(el('polygon', { points: `20 0, ${w-20} 0, ${w} ${h/2}, ${w-20} ${h}, 20 ${h}, 0 ${h/2}`,
         class: 'node-bg', fill: 'var(--surface)', stroke: 'var(--border)', 'stroke-width': '1.5' }));
     } else {
       g.appendChild(el('rect', { width: w, height: h, rx: 8, ry: 8,
@@ -203,33 +211,49 @@ export class CanvasEngine {
     });
 
     // Ports
-    const portEl = (port, isInput, idx) => {
-      const px = this._portX(port, isInput, w);
-      const py = this._portY(port, idx, h);
-      return el('circle', { cx: px, cy: py, r: 6,
+    const inputs = def.inputs || [];
+    const outputs = def.outputs || [];
+    const addPort = (port, isInput, idx, count) => {
+      const px = isInput ? 0 : w;
+      const py = this._portY(idx, count, h);
+      const circle = el('circle', { cx: px, cy: py, r: 6,
         class: `port port-${port.type} port-${isInput ? 'input' : 'output'}`,
         'data-port-id': port.id, 'data-port-type': port.type, 'data-is-input': isInput });
+      const title = el('title', {}, port.label || port.id);
+      circle.appendChild(title);
+      g.appendChild(circle);
+      if (port.label) {
+        const lx = isInput ? 12 : w - 12;
+        const anchor = isInput ? 'start' : 'end';
+        const label = el('text', { x: lx, y: py + 4,
+          class: `port-label ${isInput ? 'port-label-input' : 'port-label-output'}`,
+          'text-anchor': anchor }, port.label);
+        g.appendChild(label);
+      }
     };
-    (def.inputs || []).forEach((p, i) => g.appendChild(portEl(p, true, i)));
-    (def.outputs || []).forEach((p, i) => g.appendChild(portEl(p, false, i)));
+    inputs.forEach((p, i) => addPort(p, true, i, inputs.length));
+    outputs.forEach((p, i) => addPort(p, false, i, outputs.length));
 
     return g;
   }
 
-  _portX(port, isInput, w) {
-    if (port.position === 'left-center') return 0;
-    if (['right-center', 'right-top', 'right-bottom'].includes(port.position)) return w;
-    return isInput ? 0 : w;
+  _calcNodeHeight(def, bodyAttrCount) {
+    const inputs = (def.inputs || []).length;
+    const outputs = (def.outputs || []).length;
+    const maxPorts = Math.max(inputs, outputs);
+    const headerHeight = 36, bottomPadding = 12, portSpacing = 24;
+    const bodyAttrHeight = bodyAttrCount * 20;
+    const portsHeight = maxPorts * portSpacing;
+    const contentHeight = Math.max(bodyAttrHeight, portsHeight);
+    return Math.max(60, headerHeight + contentHeight + bottomPadding);
   }
 
-  _portY(port, idx, h) {
-    switch (port.position) {
-      case 'top-center': return 0;
-      case 'bottom-center': return h;
-      case 'right-top': return 20 + idx * 20;
-      case 'right-bottom': return 50 + idx * 20;
-      default: return 30 + idx * 20;
-    }
+  _portY(idx, count, h) {
+    const headerHeight = 36, bottomPadding = 12, portSpacing = 24;
+    if (count === 0) return headerHeight;
+    const contentHeight = h - headerHeight - bottomPadding;
+    const startY = headerHeight + (contentHeight - (count - 1) * portSpacing) / 2;
+    return startY + idx * portSpacing;
   }
 
   _createEdgeSVG(edge, nodes) {
@@ -239,6 +263,8 @@ export class CanvasEngine {
     path.dataset.edgeId = edge.id;
     path.dataset.sourceNode = edge.sourceNodeId;
     path.dataset.targetNode = edge.targetNodeId;
+    path.dataset.sourcePort = edge.sourcePortId;
+    path.dataset.targetPort = edge.targetPortId;
     path.setAttribute('d', this._calcEdgePath(edge, nodes));
     path.setAttribute('fill', 'none');
     path.setAttribute('stroke', 'var(--edge-color, #94a3b8)');
@@ -247,12 +273,24 @@ export class CanvasEngine {
     return path;
   }
 
+  _findPortY(node, portId, isOutput) {
+    const def = node.definition || {};
+    const ports = isOutput ? (def.outputs || []) : (def.inputs || []);
+    const bodyAttrs = (def.attributes || []).filter(a => a.display === 'node-body' || a.display === 'both');
+    const h = this._calcNodeHeight(def, bodyAttrs.length);
+    const idx = ports.findIndex(p => p.id === portId);
+    if (idx < 0) return h / 2;
+    return this._portY(idx, ports.length, h);
+  }
+
   _calcEdgePath(edge, nodes) {
     const src = nodes.find(n => n.id === edge.sourceNodeId);
     const tgt = nodes.find(n => n.id === edge.targetNodeId);
     if (!src || !tgt) return '';
     const sw = src.definition?.shape?.width || 200;
-    const x1 = src.x + sw, y1 = src.y + 30, x2 = tgt.x, y2 = tgt.y + 30;
+    const srcPortY = this._findPortY(src, edge.sourcePortId, true);
+    const tgtPortY = this._findPortY(tgt, edge.targetPortId, false);
+    const x1 = src.x + sw, y1 = src.y + srcPortY, x2 = tgt.x, y2 = tgt.y + tgtPortY;
     const cp = Math.max(50, (x2 - x1) * 0.5);
     return `M ${x1} ${y1} C ${x1+cp} ${y1}, ${x2-cp} ${y2}, ${x2} ${y2}`;
   }
