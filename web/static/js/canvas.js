@@ -14,6 +14,10 @@ export class CanvasEngine {
     this.gridSize = 24;
     this._isPanning = false;
     this._bindEvents();
+    // Auto-fit view when loading a workflow with existing nodes
+    if (this.svg.querySelectorAll('.node').length > 0) {
+      this.fitToView();
+    }
   }
 
   screenToCanvas(screenX, screenY) {
@@ -56,6 +60,13 @@ export class CanvasEngine {
     this.panX += dx;
     this.panY += dy;
     this._applyTransform();
+  }
+
+  startPan(e) {
+    this._isPanning = true;
+    this._lastX = e.clientX;
+    this._lastY = e.clientY;
+    this.svg.classList.add('panning');
   }
 
   fitToView() {
@@ -279,9 +290,7 @@ export class CanvasEngine {
 
     this.svg.addEventListener('mousedown', (e) => {
       if (e.button === 1 || (e.button === 0 && e.getModifierState('Space'))) {
-        this._isPanning = true;
-        this._lastX = e.clientX;
-        this._lastY = e.clientY;
+        this.startPan(e);
         e.preventDefault();
       }
     });
@@ -293,7 +302,12 @@ export class CanvasEngine {
       this._lastY = e.clientY;
     });
 
-    window.addEventListener('mouseup', () => { this._isPanning = false; });
+    window.addEventListener('mouseup', () => {
+      if (this._isPanning) {
+        this._isPanning = false;
+        this.svg.classList.remove('panning');
+      }
+    });
 
     document.getElementById('zoom-in')?.addEventListener('click', () => {
       const r = this.svg.getBoundingClientRect();

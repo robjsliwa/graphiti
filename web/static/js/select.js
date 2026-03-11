@@ -41,8 +41,15 @@ export class SelectionManager {
         this._selectEdge(edge.dataset.edgeId);
         e.stopPropagation();
       } else {
-        if (!e.ctrlKey && !e.metaKey) this.clearSelection();
-        this._startRubberBand(e);
+        if (e.shiftKey) {
+          // Shift+drag = rubber band selection
+          if (!e.ctrlKey && !e.metaKey) this.clearSelection();
+          this._startRubberBand(e);
+        } else {
+          // Plain drag on empty canvas = pan
+          this.clearSelection();
+          this.canvas.startPan(e);
+        }
       }
     });
 
