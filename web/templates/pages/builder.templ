@@ -24,7 +24,17 @@ templ Builder(data BuilderData) {
 				<span class="nav-title">Graphiti</span>
 			</div>
 			<div class="nav-breadcrumb">
-				<a href="/">Workflows</a> / { data.Workflow.Name }
+				<a href="/">Workflows</a> /
+				<span x-data={ "{ editing: false, name: '" + data.Workflow.Name + "', original: '" + data.Workflow.Name + "' }" }
+					@click="if (!editing) { editing = true; $nextTick(() => { $refs.nameInput.focus(); $refs.nameInput.select(); }) }"
+					class="breadcrumb-name">
+					<span x-show="!editing" x-text="name" style="cursor: pointer;" title="Click to rename"></span>
+					<input x-show="editing" x-ref="nameInput" x-model="name" x-cloak
+						@blur="editing = false; if (name.trim() && name !== original) { original = name; htmx.ajax('PATCH', '/api/workflows/' + document.getElementById('graphiti-data').dataset.workflowId + '/name', {values: {name: name.trim()}, swap: 'none'}) } else if (!name.trim()) { name = original }"
+						@keydown.enter="$refs.nameInput.blur()"
+						@keydown.escape="name = original; editing = false"
+						class="breadcrumb-edit-input" />
+				</span>
 			</div>
 			<div class="nav-actions">
 				<span class="version-badge">v{ itoa(data.Workflow.Version) }</span>

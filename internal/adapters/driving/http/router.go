@@ -47,6 +47,7 @@ func NewRouter(deps RouterDeps) http.Handler {
 	protected.HandleFunc("POST /workflows", handleCreateWorkflow(deps.WorkflowSvc))
 	protected.HandleFunc("GET /workflows/{id}", handleWorkflowBuilder(deps.WorkflowSvc, deps.NodeRegistry))
 	protected.HandleFunc("DELETE /workflows/{id}", handleDeleteWorkflow(deps.WorkflowSvc))
+	protected.HandleFunc("PATCH /api/workflows/{id}/name", handleRenameWorkflow(deps.WorkflowSvc))
 
 	// Command API routes
 	protected.HandleFunc("POST /api/workflows/{id}/commands", handleExecuteCommand(deps.WorkflowSvc, deps.NodeRegistry))

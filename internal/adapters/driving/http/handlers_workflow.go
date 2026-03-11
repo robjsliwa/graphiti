@@ -182,5 +182,33 @@ func handleHelp() http.HandlerFunc {
 	}
 }
 
+func handleRenameWorkflow(svc driving.WorkflowService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		workflowID := r.PathValue("id")
+
+		name := strings.TrimSpace(r.FormValue("name"))
+		if name == "" {
+			http.Error(w, "name is required", http.StatusBadRequest)
+			return
+		}
+
+		wf, err := svc.GetWorkflow(r.Context(), workflowID)
+		if err != nil {
+			slog.Error("get workflow for rename failed", "error", err, "id", workflowID)
+			http.Error(w, "workflow not found", http.StatusNotFound)
+			return
+		}
+
+		wf.Name = name
+		if err := svc.SaveWorkflow(r.Context(), wf); err != nil {
+			slog.Error("rename workflow failed", "error", err, "id", workflowID)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
 // Ensure domain import is used (needed for FindNode return type)
 var _ = (*domain.NodeInstance)(nil)
