@@ -149,14 +149,8 @@ func (r *WorkflowRepository) GetByID(ctx context.Context, id string) (*domain.Wo
 	wf.CreatedBy = createdBy.String
 	wf.Status = domain.WorkflowStatus(status)
 
-	wf.CreatedAt, _ = time.Parse("2006-01-02 15:04:05-07:00", createdAt)
-	if wf.CreatedAt.IsZero() {
-		wf.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAt)
-	}
-	wf.UpdatedAt, _ = time.Parse("2006-01-02 15:04:05-07:00", updatedAt)
-	if wf.UpdatedAt.IsZero() {
-		wf.UpdatedAt, _ = time.Parse("2006-01-02 15:04:05", updatedAt)
-	}
+	wf.CreatedAt = ParseTimeStr(createdAt)
+	wf.UpdatedAt = ParseTimeStr(updatedAt)
 
 	nodes, edges, err := unmarshalDefinition([]byte(defJSON))
 	if err != nil {
@@ -198,10 +192,7 @@ func (r *WorkflowRepository) List(ctx context.Context, filter driven.WorkflowFil
 			return nil, fmt.Errorf("scan workflow summary: %w", err)
 		}
 		s.Status = domain.WorkflowStatus(status)
-		s.UpdatedAt, _ = time.Parse("2006-01-02 15:04:05-07:00", updatedAt)
-		if s.UpdatedAt.IsZero() {
-			s.UpdatedAt, _ = time.Parse("2006-01-02 15:04:05", updatedAt)
-		}
+		s.UpdatedAt = ParseTimeStr(updatedAt)
 		summaries = append(summaries, &s)
 	}
 	if err := rows.Err(); err != nil {
@@ -280,18 +271,8 @@ func (r *WorkflowRepository) GetVersionHistory(ctx context.Context, id string) (
 		}
 
 		v.DeployedBy = deployedBy.String
-		if deployedAt.Valid {
-			v.DeployedAt, _ = time.Parse("2006-01-02 15:04:05-07:00", deployedAt.String)
-			if v.DeployedAt.IsZero() {
-				v.DeployedAt, _ = time.Parse("2006-01-02 15:04:05", deployedAt.String)
-			}
-		}
-		if createdAt.Valid {
-			v.CreatedAt, _ = time.Parse("2006-01-02 15:04:05-07:00", createdAt.String)
-			if v.CreatedAt.IsZero() {
-				v.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAt.String)
-			}
-		}
+		v.DeployedAt = parseNullTime(deployedAt)
+		v.CreatedAt = parseNullTime(createdAt)
 
 		versions = append(versions, &v)
 	}

@@ -70,8 +70,8 @@ func (r *ExecutionRepository) GetByID(ctx context.Context, id string) (*domain.E
 	}
 
 	run.Status = domain.ExecutionStatus(status)
-	run.StartedAt = parseTime(startedAt)
-	run.CompletedAt = parseTime(completedAt)
+	run.StartedAt = parseNullTime(startedAt)
+	run.CompletedAt = parseNullTime(completedAt)
 
 	if triggerData.Valid && triggerData.String != "" {
 		json.Unmarshal([]byte(triggerData.String), &run.TriggerData)
@@ -119,8 +119,8 @@ func (r *ExecutionRepository) ListByWorkflow(ctx context.Context, workflowID str
 			return nil, fmt.Errorf("scan execution summary: %w", err)
 		}
 		s.Status = domain.ExecutionStatus(status)
-		s.StartedAt = parseTime(startedAt)
-		s.CompletedAt = parseTime(completedAt)
+		s.StartedAt = parseNullTime(startedAt)
+		s.CompletedAt = parseNullTime(completedAt)
 		summaries = append(summaries, &s)
 	}
 	return summaries, rows.Err()
@@ -244,8 +244,8 @@ func (r *ExecutionRepository) loadNodeStatuses(ctx context.Context, runID string
 		}
 
 		ns.Status = domain.NodeExecStatus(status)
-		ns.StartedAt = parseTime(startedAt)
-		ns.CompletedAt = parseTime(completedAt)
+		ns.StartedAt = parseNullTime(startedAt)
+		ns.CompletedAt = parseNullTime(completedAt)
 
 		if inputData.Valid && inputData.String != "" && inputData.String != "null" {
 			json.Unmarshal([]byte(inputData.String), &ns.InputData)
@@ -262,17 +262,25 @@ func (r *ExecutionRepository) loadNodeStatuses(ctx context.Context, runID string
 	return statuses, rows.Err()
 }
 
-// parseTime tries to parse a nullable time string.
-func parseTime(ns sql.NullString) time.Time {
+// parseTimeStr tries multiple time formats that modernc.org/sqlite may produce.
+func ParseTimeStr(s string) time.Time {
+	for _, layout := range []string{
+		time.RFC3339,
+		"2006-01-02T15:04:05Z07:00",
+		"2006-01-02 15:04:05-07:00",
+		"2006-01-02 15:04:05",
+	} {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t
+		}
+	}
+	return time.Time{}
+}
+
+// parseNullTime parses a nullable time string.
+func parseNullTime(ns sql.NullString) time.Time {
 	if !ns.Valid || ns.String == "" {
 		return time.Time{}
 	}
-	t, err := time.Parse(time.RFC3339, ns.String)
-	if err != nil {
-		t, _ = time.Parse("2006-01-02 15:04:05-07:00", ns.String)
-		if t.IsZero() {
-			t, _ = time.Parse("2006-01-02 15:04:05", ns.String)
-		}
-	}
-	return t
+	return ParseTimeStr(ns.String)
 }

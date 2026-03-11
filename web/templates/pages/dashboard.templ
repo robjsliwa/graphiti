@@ -56,7 +56,11 @@ templ Dashboard(data DashboardData) {
 							</div>
 							<div class="workflow-card-meta">
 								<span>v{ itoa(wf.Version) }</span>
-								<span>{ wf.UpdatedAt.Format("Jan 2, 2006 15:04") }</span>
+								<time
+										x-data
+										x-text="new Date($el.getAttribute('datetime')).toLocaleDateString(undefined, {month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'})"
+										datetime={ wf.UpdatedAt.UTC().Format("2006-01-02T15:04:05Z") }
+									>{ wf.UpdatedAt.UTC().Format("Jan 2, 2006 15:04 UTC") }</time>
 							</div>
 						</a>
 						<button

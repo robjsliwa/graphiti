@@ -11,6 +11,115 @@ import (
 	"graphiti/internal/ports/driven"
 )
 
+func TestParseTimeStr(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string // expected RFC3339 output
+	}{
+		{"RFC3339 with Z", "2025-03-11T14:30:00Z", "2025-03-11T14:30:00Z"},
+		{"RFC3339 with offset", "2025-03-11T14:30:00+05:00", "2025-03-11T14:30:00+05:00"},
+		{"space separator with offset", "2025-03-11 14:30:00+00:00", "2025-03-11T14:30:00Z"},
+		{"space separator no offset", "2025-03-11 14:30:00", "2025-03-11T14:30:00Z"},
+		{"empty string", "", "0001-01-01T00:00:00Z"},
+		{"garbage", "not-a-time", "0001-01-01T00:00:00Z"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := sqliteadapter.ParseTimeStr(tt.input)
+			if got.Format(time.RFC3339) != tt.want {
+				t.Errorf("ParseTimeStr(%q) = %s, want %s", tt.input, got.Format(time.RFC3339), tt.want)
+			}
+		})
+	}
+}
+
+func TestWorkflowRepo_TimestampRoundTrip(t *testing.T) {
+	db := newTestDB(t)
+	userRepo := sqliteadapter.NewUserRepository(db)
+	repo := sqliteadapter.NewWorkflowRepository(db)
+	ctx := context.Background()
+
+	user := &domain.User{
+		ID: "user-1", Username: "testuser",
+		AuthProvider: "fake", AuthProviderID: "fake-1",
+		CreatedAt: time.Now().UTC(), LastLoginAt: time.Now().UTC(),
+	}
+	if err := userRepo.Upsert(ctx, user); err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	wf := makeWorkflow("wf-ts", "Timestamp Test", "user-1")
+
+	if err := repo.Create(ctx, wf); err != nil {
+		t.Fatalf("create workflow: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, "wf-ts")
+	if err != nil {
+		t.Fatalf("get workflow: %v", err)
+	}
+
+	// Timestamps should survive the round-trip (truncated to seconds).
+	wantCreated := wf.CreatedAt.Truncate(time.Second)
+	gotCreated := got.CreatedAt.Truncate(time.Second)
+	if !gotCreated.Equal(wantCreated) {
+		t.Errorf("CreatedAt: got %v, want %v", gotCreated, wantCreated)
+	}
+
+	wantUpdated := wf.UpdatedAt.Truncate(time.Second)
+	gotUpdated := got.UpdatedAt.Truncate(time.Second)
+	if !gotUpdated.Equal(wantUpdated) {
+		t.Errorf("UpdatedAt: got %v, want %v", gotUpdated, wantUpdated)
+	}
+
+	// Verify they're not zero.
+	if got.CreatedAt.IsZero() {
+		t.Error("CreatedAt is zero time")
+	}
+	if got.UpdatedAt.IsZero() {
+		t.Error("UpdatedAt is zero time")
+	}
+}
+
+func TestWorkflowRepo_ListTimestampRoundTrip(t *testing.T) {
+	db := newTestDB(t)
+	userRepo := sqliteadapter.NewUserRepository(db)
+	repo := sqliteadapter.NewWorkflowRepository(db)
+	ctx := context.Background()
+
+	user := &domain.User{
+		ID: "user-1", Username: "testuser",
+		AuthProvider: "fake", AuthProviderID: "fake-1",
+		CreatedAt: time.Now().UTC(), LastLoginAt: time.Now().UTC(),
+	}
+	if err := userRepo.Upsert(ctx, user); err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	wf := makeWorkflow("wf-ts-list", "List Timestamp Test", "user-1")
+	if err := repo.Create(ctx, wf); err != nil {
+		t.Fatalf("create workflow: %v", err)
+	}
+
+	summaries, err := repo.List(ctx, driven.WorkflowFilter{})
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(summaries) == 0 {
+		t.Fatal("expected at least one summary")
+	}
+
+	wantUpdated := wf.UpdatedAt.Truncate(time.Second)
+	gotUpdated := summaries[0].UpdatedAt.Truncate(time.Second)
+	if !gotUpdated.Equal(wantUpdated) {
+		t.Errorf("List UpdatedAt: got %v, want %v", gotUpdated, wantUpdated)
+	}
+	if summaries[0].UpdatedAt.IsZero() {
+		t.Error("List UpdatedAt is zero time")
+	}
+}
+
 func makeWorkflow(id, name, createdBy string) *domain.Workflow {
 	now := time.Now().Truncate(time.Second).UTC()
 	return &domain.Workflow{
