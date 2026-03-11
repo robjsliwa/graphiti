@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"graphiti/internal/domain"
 	"graphiti/internal/ports/driving"
@@ -167,6 +168,17 @@ func handleNodeConfig(svc driving.WorkflowService) http.HandlerFunc {
 			Node:       node,
 		}
 		partials.ConfigPanel(data).Render(r.Context(), w)
+	}
+}
+
+func handleHelp() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		modKey := "Ctrl"
+		ua := r.UserAgent()
+		if strings.Contains(ua, "Mac") || strings.Contains(ua, "iPhone") || strings.Contains(ua, "iPad") {
+			modKey = "\u2318"
+		}
+		partials.HelpModal(modKey).Render(r.Context(), w)
 	}
 }
 

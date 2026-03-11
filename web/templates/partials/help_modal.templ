@@ -1,0 +1,34 @@
+package partials
+
+templ HelpModal(modKey string) {
+	<div id="shortcut-overlay" class="shortcut-overlay"
+		@click.self="this.remove()"
+		@keydown.escape.window="document.getElementById('shortcut-overlay')?.remove()">
+		<div class="shortcut-modal">
+			<h3>Keyboard Shortcuts</h3>
+			<div class="shortcut-grid">
+				<div class="shortcut-group">
+					<h4>Edit</h4>
+					<div><kbd>{ modKey }+Z</kbd> Undo</div>
+					<div><kbd>{ modKey }+Shift+Z</kbd> Redo</div>
+					<div><kbd>{ modKey }+C</kbd> Copy</div>
+					<div><kbd>{ modKey }+X</kbd> Cut</div>
+					<div><kbd>{ modKey }+V</kbd> Paste</div>
+					<div><kbd>{ modKey }+D</kbd> Duplicate</div>
+					<div><kbd>{ modKey }+A</kbd> Select All</div>
+					<div><kbd>Del</kbd> Delete</div>
+				</div>
+				<div class="shortcut-group">
+					<h4>View</h4>
+					<div><kbd>{ modKey }+=</kbd> Zoom In</div>
+					<div><kbd>{ modKey }+-</kbd> Zoom Out</div>
+					<div><kbd>{ modKey }+0</kbd> Fit to View</div>
+					<div><kbd>Space+Drag</kbd> Pan</div>
+					<div><kbd>Esc</kbd> Deselect</div>
+					<div><kbd>?</kbd> This Help</div>
+				</div>
+			</div>
+			<button class="btn" onclick="document.getElementById('shortcut-overlay')?.remove()">Close</button>
+		</div>
+	</div>
+}

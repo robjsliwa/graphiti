@@ -125,63 +125,9 @@ export class CommandDispatcher {
   }
 
   _toggleHelp() {
-    let overlay = document.getElementById('shortcut-overlay');
+    const overlay = document.getElementById('shortcut-overlay');
     if (overlay) { overlay.remove(); return; }
-
-    const mod = navigator.platform.includes('Mac') ? '\u2318' : 'Ctrl';
-    const shortcuts = [
-      ['Edit', [
-        [mod + '+Z', 'Undo'], [mod + '+Shift+Z', 'Redo'],
-        [mod + '+C', 'Copy'], [mod + '+X', 'Cut'],
-        [mod + '+V', 'Paste'], [mod + '+D', 'Duplicate'],
-        [mod + '+A', 'Select All'], ['Del', 'Delete'],
-      ]],
-      ['View', [
-        [mod + '+=', 'Zoom In'], [mod + '+-', 'Zoom Out'],
-        [mod + '+0', 'Fit to View'], ['Space+Drag', 'Pan'],
-        ['Esc', 'Deselect'], ['?', 'This Help'],
-      ]],
-    ];
-
-    overlay = document.createElement('div');
-    overlay.id = 'shortcut-overlay';
-    overlay.className = 'shortcut-overlay';
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-
-    const modal = document.createElement('div');
-    modal.className = 'shortcut-modal';
-    const title = document.createElement('h3');
-    title.textContent = 'Keyboard Shortcuts';
-    modal.appendChild(title);
-
-    const grid = document.createElement('div');
-    grid.className = 'shortcut-grid';
-    for (const [groupName, items] of shortcuts) {
-      const group = document.createElement('div');
-      group.className = 'shortcut-group';
-      const h4 = document.createElement('h4');
-      h4.textContent = groupName;
-      group.appendChild(h4);
-      for (const [key, desc] of items) {
-        const row = document.createElement('div');
-        const kbd = document.createElement('kbd');
-        kbd.textContent = key;
-        row.appendChild(kbd);
-        row.appendChild(document.createTextNode(' ' + desc));
-        group.appendChild(row);
-      }
-      grid.appendChild(group);
-    }
-    modal.appendChild(grid);
-
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'btn';
-    closeBtn.textContent = 'Close';
-    closeBtn.addEventListener('click', () => overlay.remove());
-    modal.appendChild(closeBtn);
-
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
+    htmx.ajax('GET', '/help', { target: 'body', swap: 'beforeend' });
   }
 }
 

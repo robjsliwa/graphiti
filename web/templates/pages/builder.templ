@@ -28,30 +28,45 @@ templ Builder(data BuilderData) {
 			</div>
 			<div class="nav-actions">
 				<span class="version-badge">v{ itoa(data.Workflow.Version) }</span>
-				<button class="btn btn-icon" id="theme-toggle" title="Toggle theme">&#x263E;</button>
-				<div class="deploy-dropdown">
-					<button class="btn btn-success" id="deploy-btn">Deploy</button>
-					<button class="btn btn-success deploy-chevron" id="deploy-chevron" title="Deploy options">&#x25BE;</button>
-					<div class="deploy-menu" id="deploy-menu" hidden>
-						<button class="deploy-menu-item" data-action="deploy" data-target="production">Deploy to Production</button>
-						<button class="deploy-menu-item" data-action="deploy" data-target="staging">Deploy to Staging</button>
+				<button class="btn btn-icon" id="theme-toggle" title="Toggle theme"
+					@click="theme = theme === 'dark' ? 'light' : 'dark'"
+					x-text="theme === 'dark' ? '\u2600' : '\u263E'">&#x263E;</button>
+				<div class="deploy-dropdown" x-data="deployManager" @click.outside="menuOpen = false">
+					<button class="btn btn-success" id="deploy-btn"
+						:disabled="isDeploying"
+						:class="{ 'deploy-success': deployStatus === 'success', 'deploy-error': deployStatus === 'error' }"
+						x-text="isDeploying ? 'Deploying...' : (deployStatus === 'success' ? '\u2713 Deployed' : 'Deploy')"
+						@click="deploy('production')">Deploy</button>
+					<button class="btn btn-success deploy-chevron" title="Deploy options"
+						@click.stop="menuOpen = !menuOpen">&#x25BE;</button>
+					<div class="deploy-menu" x-show="menuOpen" x-cloak @click.stop>
+						<button class="deploy-menu-item"
+							@click="deploy('production'); menuOpen = false">Deploy to Production</button>
+						<button class="deploy-menu-item"
+							@click="deploy('staging'); menuOpen = false">Deploy to Staging</button>
 						<hr/>
-						<button class="deploy-menu-item" data-action="save-draft">Save as Draft</button>
+						<button class="deploy-menu-item"
+							@click="toast.info('Workflow is auto-saved'); menuOpen = false">Save as Draft</button>
 						<hr/>
-						<button class="deploy-menu-item" data-action="export" data-format="yaml">Export as YAML</button>
-						<button class="deploy-menu-item" data-action="export" data-format="json">Export as JSON</button>
+						<button class="deploy-menu-item"
+							@click="exportWf('yaml'); menuOpen = false">Export as YAML</button>
+						<button class="deploy-menu-item"
+							@click="exportWf('json'); menuOpen = false">Export as JSON</button>
 					</div>
 				</div>
 				<span class="nav-user">{ data.Username }</span>
 			</div>
 		</nav>
+		<div x-data="executionMode">
 		<div class="mode-tabs">
-			<button class="mode-tab active" id="mode-builder" data-mode="builder">Builder</button>
-			<button class="mode-tab" id="mode-execution" data-mode="execution">Execution</button>
+			<button class="mode-tab" :class="{ active: mode === 'builder' }"
+				@click="setMode('builder')">Builder</button>
+			<button class="mode-tab" :class="{ active: mode === 'execution' }"
+				@click="setMode('execution')">Execution</button>
 		</div>
 		<div class="builder-layout">
 			<aside class="panel panel-left" id="palette-panel">
-				<div id="panel-left-builder">
+				<div id="panel-left-builder" x-show="mode === 'builder'">
 					<div class="panel-header">
 						<h2>Components</h2>
 						<input
@@ -68,7 +83,7 @@ templ Builder(data BuilderData) {
 						@partials.NodePalette(data.NodeDefinitions)
 					</div>
 				</div>
-				<div id="panel-left-execution" style="display:none">
+				<div id="panel-left-execution" x-show="mode === 'execution'" x-cloak>
 					<div class="panel-header">
 						<h2>Run History</h2>
 					</div>
@@ -107,8 +122,9 @@ templ Builder(data BuilderData) {
 				</div>
 			</aside>
 		</div>
+		</div>
 		<div id="graphiti-data" data-workflow-id={ data.Workflow.ID } hidden></div>
-		<script src="/static/js/theme.js"></script>
+		<script src="/static/js/components.js"></script>
 		<script type="module" src="/static/js/app.js"></script>
 	}
 }
