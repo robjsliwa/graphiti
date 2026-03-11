@@ -89,16 +89,14 @@ templ Node(node *domain.NodeInstance) {
 		</text>
 		<!-- Attribute rows for node-body display -->
 		if node.Definition != nil {
-			for i, attr := range node.Definition.Attributes {
-				if attr.Display == domain.DisplayNodeBody || attr.Display == domain.DisplayBoth {
-					<text
-						x="12"
-						y={ fmt.Sprintf("%d", 52 + i*20) }
-						class="node-attr-label"
-					>
-						{ attr.Label }: { attrStr(node.AttributeValues[attr.ID]) }
-					</text>
-				}
+			for _, ba := range bodyAttrs(node) {
+				<text
+					x="12"
+					y={ fmt.Sprintf("%d", ba.Y) }
+					class="node-attr-label"
+				>
+					{ ba.Label }: { ba.Value }
+				</text>
 			}
 		}
 		<!-- Ports -->
@@ -315,6 +313,28 @@ func boolStr(b bool) string {
 		return "true"
 	}
 	return "false"
+}
+
+type bodyAttr struct {
+	Label string
+	Value string
+	Y     int
+}
+
+func bodyAttrs(node *domain.NodeInstance) []bodyAttr {
+	var result []bodyAttr
+	idx := 0
+	for _, attr := range node.Definition.Attributes {
+		if attr.Display == domain.DisplayNodeBody || attr.Display == domain.DisplayBoth {
+			result = append(result, bodyAttr{
+				Label: attr.Label,
+				Value: attrStr(node.AttributeValues[attr.ID]),
+				Y:     52 + idx*20,
+			})
+			idx++
+		}
+	}
+	return result
 }
 
 func attrStr(v any) string {
