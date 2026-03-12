@@ -1,6 +1,9 @@
 package pages
 
-import "graphiti/web/templates/layouts"
+import (
+	"graphiti/web/templates/layouts"
+	"graphiti/web/templates/partials"
+)
 
 type LoginData struct {
 	Provider string
@@ -11,6 +14,7 @@ templ Login() {
 	@layouts.Base("Login") {
 		<div class="login-page">
 			<div class="login-card">
+				@partials.Logo(64)
 				<h1>Graphiti</h1>
 				<p>Visual Workflow Builder</p>
 				<a href="/auth/login" class="btn btn-primary btn-lg">
@@ -25,6 +29,7 @@ templ LoginWithProvider(data LoginData) {
 	@layouts.Base("Login") {
 		<div class="login-page">
 			<div class="login-card">
+				@partials.Logo(64)
 				<h1>Graphiti</h1>
 				<p>Visual Workflow Builder</p>
 				if data.Message != "" {
