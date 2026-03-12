@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -98,6 +99,20 @@ func handleWorkflowBuilder(svc driving.WorkflowService, registry driving.NodeReg
 			Workflow:        wf,
 			NodeDefinitions: nodes,
 		}
+
+		// Sub-workflow navigation: parent context
+		parentID := r.URL.Query().Get("parent")
+		parentNodeID := r.URL.Query().Get("parentNode")
+		if parentID != "" {
+			data.ParentWorkflowID = parentID
+			// Resolve parent workflow name for breadcrumb
+			parentWf, err := svc.GetWorkflow(r.Context(), parentID)
+			if err == nil {
+				data.ParentWorkflowName = parentWf.Name
+			}
+			data.ParentNodeID = parentNodeID
+		}
+
 		pages.Builder(data).Render(r.Context(), w)
 	}
 }
@@ -210,5 +225,40 @@ func handleRenameWorkflow(svc driving.WorkflowService) http.HandlerFunc {
 	}
 }
 
-// Ensure domain import is used (needed for FindNode return type)
-var _ = (*domain.NodeInstance)(nil)
+func handleNodeRef(svc driving.WorkflowService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		workflowID := r.PathValue("id")
+		nodeID := r.PathValue("nodeId")
+
+		wf, err := svc.GetWorkflow(r.Context(), workflowID)
+		if err != nil {
+			if errors.Is(err, domain.ErrNotFound) || strings.Contains(err.Error(), "not found") {
+				http.Error(w, "workflow not found", http.StatusNotFound)
+				return
+			}
+			slog.Error("get workflow failed", "error", err, "id", workflowID)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		node := wf.FindNode(nodeID)
+		if node == nil {
+			http.Error(w, "node not found", http.StatusNotFound)
+			return
+		}
+
+		workflowRef := ""
+		if val, ok := node.AttributeValues["workflow_ref"]; ok {
+			if s, ok := val.(string); ok {
+				workflowRef = s
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(struct {
+			WorkflowRef string `json:"workflowRef"`
+		}{WorkflowRef: workflowRef}); err != nil {
+			slog.Error("failed to encode node ref response", "error", err)
+		}
+	}
+}

@@ -19,6 +19,17 @@ export class SelectionManager {
   _bindEvents() {
     const svg = this.canvas.svg;
 
+    // Double-click on sub-workflow node to drill in
+    svg.addEventListener('dblclick', (e) => {
+      const node = e.target.closest('.node');
+      if (!node) return;
+      const defId = node.dataset.definitionId;
+      if (defId !== 'control-sub-workflow') return;
+      e.preventDefault();
+      e.stopPropagation();
+      this._openSubWorkflow(node.dataset.nodeId);
+    });
+
     svg.addEventListener('mousedown', (e) => {
       if (e.target.closest('.port')) return; // ports are for ConnectManager
       if (e.button !== 0 || e.getModifierState('Space')) return;
@@ -73,6 +84,9 @@ export class SelectionManager {
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
         e.preventDefault();
         this._selectAll();
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        this._cycleSelection(e.shiftKey);
       }
     });
   }
@@ -232,6 +246,37 @@ export class SelectionManager {
       this.selectedNodes.add(el.dataset.nodeId);
       el.classList.add('selected');
     });
+  }
+
+  // Sub-workflow drill-in: fetch the referenced workflow ID and navigate
+  async _openSubWorkflow(nodeId) {
+    const wfId = window.GRAPHITI?.workflowID;
+    if (!wfId) return;
+    try {
+      const resp = await fetch(`/api/workflows/${wfId}/nodes/${nodeId}/ref`);
+      if (!resp.ok) {
+        window.toast?.error('Failed to get sub-workflow reference');
+        return;
+      }
+      const data = await resp.json();
+      if (!data.workflowRef) {
+        window.toast?.warn('No workflow reference configured for this sub-workflow node');
+        return;
+      }
+      window.location.href = `/workflows/${data.workflowRef}?parent=${wfId}&parentNode=${nodeId}`;
+    } catch (err) {
+      window.toast?.error('Failed to navigate to sub-workflow');
+    }
+  }
+
+  _cycleSelection(reverse) {
+    const nodes = Array.from(this.canvas.svg.querySelectorAll('.node'));
+    if (nodes.length === 0) return;
+    const currentId = this.selectedNodes.size === 1 ? [...this.selectedNodes][0] : null;
+    let idx = currentId ? nodes.findIndex(n => n.dataset.nodeId === currentId) : -1;
+    idx = reverse ? (idx <= 0 ? nodes.length - 1 : idx - 1) : (idx + 1) % nodes.length;
+    this.clearSelection();
+    this._selectNode(nodes[idx].dataset.nodeId);
   }
 }
 

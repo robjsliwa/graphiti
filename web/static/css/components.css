@@ -23,6 +23,17 @@
 .nav-breadcrumb a { color: var(--text-muted); }
 .nav-breadcrumb a:hover { color: var(--text); }
 .breadcrumb-name { cursor: pointer; }
+.breadcrumb-parent { color: var(--text-muted); text-decoration: none; }
+.breadcrumb-parent:hover { color: var(--text); text-decoration: underline; }
+.breadcrumb-separator { color: var(--text-muted); margin: 0 2px; }
+.breadcrumb-badge {
+  font-size: 11px;
+  color: var(--accent);
+  background: var(--surface-2);
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: 6px;
+}
 .breadcrumb-edit-input {
   font-size: 13px;
   color: var(--text);

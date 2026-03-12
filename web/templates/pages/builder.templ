@@ -1,6 +1,8 @@
 package pages
 
 import (
+	"strings"
+
 	"graphiti/internal/domain"
 	"graphiti/web/templates/layouts"
 	"graphiti/web/templates/partials"
@@ -8,9 +10,12 @@ import (
 )
 
 type BuilderData struct {
-	Username        string
-	Workflow        *domain.Workflow
-	NodeDefinitions []*domain.NodeDefinition
+	Username           string
+	Workflow           *domain.Workflow
+	NodeDefinitions    []*domain.NodeDefinition
+	ParentWorkflowID   string
+	ParentWorkflowName string
+	ParentNodeID       string
 }
 
 templ Builder(data BuilderData) {
@@ -25,7 +30,13 @@ templ Builder(data BuilderData) {
 			</div>
 			<div class="nav-breadcrumb">
 				<a href="/">Workflows</a> /
-				<span x-data={ "{ editing: false, name: '" + data.Workflow.Name + "', original: '" + data.Workflow.Name + "' }" }
+				if data.ParentWorkflowID != "" {
+					<a href={ templ.SafeURL("/workflows/" + data.ParentWorkflowID) } class="breadcrumb-parent" title="Back to parent workflow">
+						{ data.ParentWorkflowName }
+					</a>
+					<span class="breadcrumb-separator">/</span>
+				}
+				<span x-data={ "{ editing: false, name: '" + jsEscape(data.Workflow.Name) + "', original: '" + jsEscape(data.Workflow.Name) + "' }" }
 					@click="if (!editing) { editing = true; $nextTick(() => { $refs.nameInput.focus(); $refs.nameInput.select(); }) }"
 					class="breadcrumb-name">
 					<span x-show="!editing" x-text="name" style="cursor: pointer;" title="Click to rename"></span>
@@ -35,12 +46,16 @@ templ Builder(data BuilderData) {
 						@keydown.escape="name = original; editing = false"
 						class="breadcrumb-edit-input" />
 				</span>
+				if data.ParentWorkflowID != "" {
+					<span class="breadcrumb-badge">(sub-workflow)</span>
+				}
 			</div>
 			<div class="nav-actions">
 				<span class="version-badge">v{ itoa(data.Workflow.Version) }</span>
 				<button class="btn btn-icon" id="theme-toggle" title="Toggle theme"
-					@click="theme = theme === 'dark' ? 'light' : 'dark'"
-					x-text="theme === 'dark' ? '\u2600' : '\u263E'">&#x263E;</button>
+					@click="themeMode = themeMode === 'light' ? 'dark' : (themeMode === 'dark' ? 'system' : 'light')"
+					x-text="themeMode === 'light' ? '\u2600' : (themeMode === 'dark' ? '\u263E' : '\u2699')"
+					:aria-label="'Theme: ' + themeMode + '. Click to switch.'">&#x2699;</button>
 				<div class="deploy-dropdown" x-data="deployManager" @click.outside="menuOpen = false">
 					<button class="btn btn-success" id="deploy-btn"
 						:disabled="isDeploying"
@@ -134,7 +149,21 @@ templ Builder(data BuilderData) {
 		</div>
 		</div>
 		<div id="graphiti-data" data-workflow-id={ data.Workflow.ID } hidden></div>
+		if data.ParentWorkflowID != "" {
+			<div id="graphiti-parent-data" data-parent-workflow-id={ data.ParentWorkflowID } data-parent-node-id={ data.ParentNodeID } hidden></div>
+		}
+		<!-- Live region for screen reader announcements -->
+		<div id="sr-announcements" aria-live="polite" aria-atomic="true" class="sr-only"></div>
 		<script src="/static/js/components.js"></script>
 		<script type="module" src="/static/js/app.js"></script>
 	}
+}
+
+// jsEscape escapes a string for safe embedding in a JS single-quoted string literal.
+func jsEscape(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `'`, `\'`)
+	s = strings.ReplaceAll(s, "\n", `\n`)
+	s = strings.ReplaceAll(s, "\r", `\r`)
+	return s
 }

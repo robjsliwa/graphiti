@@ -12,6 +12,8 @@ templ Canvas(wf *domain.Workflow) {
 		xmlns="http://www.w3.org/2000/svg"
 		width="100%"
 		height="100%"
+		role="application"
+		aria-label={ "Workflow canvas: " + wf.Name }
 	>
 		<defs>
 			<pattern id="dot-grid" width="24" height="24" patternUnits="userSpaceOnUse">
@@ -57,6 +59,8 @@ templ Node(node *domain.NodeInstance) {
 		data-node-id={ node.ID }
 		data-definition-id={ node.DefinitionID }
 		transform={ fmt.Sprintf("translate(%g, %g)", node.X, node.Y) }
+		role="img"
+		aria-label={ nodeAriaLabel(node) }
 	>
 		<!-- Background shape -->
 		@nodeShape(node)
@@ -147,6 +151,8 @@ templ Edge(wf *domain.Workflow, edge domain.Edge) {
 		stroke="var(--edge-color, #94a3b8)"
 		stroke-width="2"
 		marker-end="url(#arrowhead)"
+		role="img"
+		aria-label={ edgeAriaLabel(wf, edge) }
 	/>
 }
 
@@ -511,6 +517,28 @@ func diamondPoints(node *domain.NodeInstance) string {
 	hw := w / 2
 	hh := h / 2
 	return fmt.Sprintf("%d %d, %d %d, %d %d, %d %d", hw, 0, w, hh, hw, h, 0, hh)
+}
+
+func nodeAriaLabel(node *domain.NodeInstance) string {
+	defName := node.DefinitionID
+	if node.Definition != nil {
+		defName = node.Definition.Name
+	}
+	return fmt.Sprintf("%s node: %s", defName, node.Label)
+}
+
+func edgeAriaLabel(wf *domain.Workflow, edge domain.Edge) string {
+	srcNode := wf.FindNode(edge.SourceNodeID)
+	tgtNode := wf.FindNode(edge.TargetNodeID)
+	srcName := edge.SourceNodeID
+	tgtName := edge.TargetNodeID
+	if srcNode != nil {
+		srcName = srcNode.Label
+	}
+	if tgtNode != nil {
+		tgtName = tgtNode.Label
+	}
+	return fmt.Sprintf("Connection from %s %s to %s %s", srcName, edge.SourcePortID, tgtName, edge.TargetPortID)
 }
 
 func hexagonPoints(node *domain.NodeInstance) string {

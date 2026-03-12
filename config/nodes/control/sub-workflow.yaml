@@ -1,0 +1,74 @@
+apiVersion: graphiti/v1
+kind: NodeDefinition
+
+metadata:
+  id: control-sub-workflow
+  name: Sub-Workflow
+  description: "References another workflow as a reusable building block"
+  version: "1.0.0"
+  icon: "📦"
+
+category:
+  group: Control
+  order: 30
+
+shape:
+  type: sub-workflow
+  width: 220
+  minWidth: 180
+  maxWidth: 320
+  headerColor: "var(--node-control)"
+  headerBackground: "var(--node-control-bg)"
+
+ports:
+  inputs:
+    - id: in-main
+      label: "Input"
+      type: data
+      position: left-center
+      maxConnections: 1
+  outputs:
+    - id: out-main
+      label: "Output"
+      type: data
+      position: right-center
+      maxConnections: 1
+    - id: out-error
+      label: "Error"
+      type: error
+      position: bottom-center
+      maxConnections: 1
+
+attributes:
+  - id: workflow_ref
+    label: "Referenced Workflow"
+    type: workflow-reference
+    required: true
+    display: both
+    group: "Reference"
+    hint: "Select the workflow to execute as a sub-workflow"
+
+  - id: input_mapping
+    label: "Input Mapping"
+    type: json
+    default: "{}"
+    display: config-panel
+    group: "Data Mapping"
+    hint: '{"field": "upstream.field"} - maps parent data to child inputs'
+
+  - id: output_mapping
+    label: "Output Mapping"
+    type: json
+    default: "{}"
+    display: config-panel
+    group: "Data Mapping"
+    hint: '{"result": "child.output"} - maps child outputs to parent data'
+
+validation:
+  connectionRules:
+    - outputPort: out-main
+      allowedTargetCategories: ["Processing", "Destinations", "Control Flow"]
+      allowedTargetPorts: ["data"]
+    - outputPort: out-error
+      allowedTargetCategories: ["Processing", "Destinations"]
+      allowedTargetPorts: ["data", "error"]

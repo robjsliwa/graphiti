@@ -13,11 +13,71 @@ export class CanvasEngine {
     this.maxScale = 2.0;
     this.gridSize = 24;
     this._isPanning = false;
+    this._nodeSizeCache = new Map(); // nodeId → {w, h}
+    this._cullPending = false;
     this._bindEvents();
     // Auto-fit view when loading a workflow with existing nodes
     if (this.svg.querySelectorAll('.node').length > 0) {
       this.fitToView();
     }
+  }
+
+  // Get the visible viewport in canvas coordinates
+  _getViewport() {
+    const rect = this.svg.getBoundingClientRect();
+    const topLeft = this.screenToCanvas(rect.left, rect.top);
+    const bottomRight = this.screenToCanvas(rect.right, rect.bottom);
+    return { x1: topLeft.x, y1: topLeft.y, x2: bottomRight.x, y2: bottomRight.y };
+  }
+
+  // Check if a node bounding box overlaps the viewport (with padding)
+  _isInViewport(nx, ny, nw, nh, vp) {
+    const pad = 50; // extra padding to avoid pop-in
+    return nx + nw + pad >= vp.x1 && nx - pad <= vp.x2 &&
+           ny + nh + pad >= vp.y1 && ny - pad <= vp.y2;
+  }
+
+  // Apply level-of-detail and viewport culling to all nodes
+  _applyCulling() {
+    if (this._cullPending) return;
+    this._cullPending = true;
+    requestAnimationFrame(() => {
+      this._cullPending = false;
+      const vp = this._getViewport();
+      const lowDetail = this.scale < 0.5;
+      const hidePorts = this.scale < 0.3;
+
+      this.nodeLayer.querySelectorAll('.node').forEach(el => {
+        const pos = this.getNodePosition(el);
+        const id = el.dataset.nodeId;
+        let size = this._nodeSizeCache.get(id);
+        if (!size) {
+          const w = parseInt(el.querySelector('.node-header')?.getAttribute('width') || '200');
+          const bg = el.querySelector('.node-bg');
+          const h = parseInt(bg?.getAttribute('height') || '80');
+          size = { w, h };
+          this._nodeSizeCache.set(id, size);
+        }
+
+        if (!this._isInViewport(pos.x, pos.y, size.w, size.h, vp)) {
+          el.classList.add('culled');
+          return;
+        }
+        el.classList.remove('culled');
+
+        // Level-of-detail: hide text/ports at very low zoom
+        if (lowDetail) {
+          el.classList.add('lod-low');
+        } else {
+          el.classList.remove('lod-low');
+        }
+        if (hidePorts) {
+          el.classList.add('lod-no-ports');
+        } else {
+          el.classList.remove('lod-no-ports');
+        }
+      });
+    });
   }
 
   screenToCanvas(screenX, screenY) {
@@ -103,6 +163,7 @@ export class CanvasEngine {
   // Sync the canvas SVG DOM from workflow state JSON
   syncCanvas(state) {
     if (!state) return;
+    this._nodeSizeCache.clear(); // invalidate size cache on state change
     const stateNodeIds = new Set((state.nodes || []).map(n => n.id));
     const stateEdgeIds = new Set((state.edges || []).map(e => e.id));
 
@@ -351,6 +412,7 @@ export class CanvasEngine {
           dot.setAttribute('r', Math.max(0.5, this.scale));
         }
       }
+      this._applyCulling();
     });
   }
 

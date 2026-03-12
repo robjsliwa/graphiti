@@ -87,3 +87,12 @@
 .execution-mode .node { cursor: default; pointer-events: none; }
 .execution-mode .port { cursor: default; pointer-events: none; }
 .execution-mode .edge { cursor: default; }
+
+/* Viewport culling and level-of-detail */
+.node.culled { display: none; }
+.node.lod-low .node-title,
+.node.lod-low .node-attr-label,
+.node.lod-low .node-icon,
+.node.lod-low .port-label { display: none; }
+.node.lod-no-ports .port { display: none; }
+.node.lod-no-ports .port-label { display: none; }

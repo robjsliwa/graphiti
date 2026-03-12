@@ -20,12 +20,12 @@ func TestLoadRealNodeDefinitions(t *testing.T) {
 		t.Fatalf("LoadAll: %v", err)
 	}
 
-	// We expect at least 10 node definitions (4 original + 6 new Phase 4.5)
-	if len(defs) < 10 {
-		t.Errorf("loaded %d definitions, expected at least 10", len(defs))
+	// We expect at least 11 node definitions (4 original + 6 Phase 4.5 + 1 Phase 5)
+	if len(defs) < 11 {
+		t.Errorf("loaded %d definitions, expected at least 11", len(defs))
 	}
 
-	// Verify specific Phase 4.5 nodes exist
+	// Verify specific nodes exist
 	wantIDs := []string{
 		"source-api-gateway",
 		"control-http-router",
@@ -33,6 +33,7 @@ func TestLoadRealNodeDefinitions(t *testing.T) {
 		"destination-postgresql",
 		"destination-http-response",
 		"processing-json-transform",
+		"control-sub-workflow",
 	}
 
 	defMap := make(map[string]bool, len(defs))

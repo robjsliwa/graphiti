@@ -3869,6 +3869,912 @@ variables:
 
 **Phase 5 Demo Checkpoint:** Build a workflow with a sub-workflow node. Double-click it. You drill into the inner workflow, the breadcrumb updates. Build something inside, navigate back. Toggle to dark mode. The entire UI smoothly transitions. Load a stress-test workflow with 300 nodes. Pan and zoom are still smooth thanks to viewport culling. Press `?` to see the full shortcut map. Navigate the palette with the keyboard using Tab and arrow keys.
 
+## Phase 6: Validation Framework and Comprehensive Test Suite
+
+**Goal:** Build a layered validation system that catches every category of mistake a user can make, from structural graph problems to individual attribute typos. Enforce the "one connected flow per canvas" rule. Surface validation results with clear severity levels so users know what's blocking deploy vs. what's just a heads-up. Every validation rule is covered by exhaustive table-driven tests. At demo time, you can try to deploy a broken workflow and see exactly what's wrong, with problematic nodes highlighted on the canvas and a clear error list explaining each issue.
+
+**Estimated Duration:** 3-4 weeks
+
+**Depends on:** Phase 5 (sub-workflows), Phase 4.5 (new node types expand the validation surface area)
+
+```mermaid
+graph LR
+    A["Graph Structure<br/>Validations"] --> B["Port + Edge<br/>Validations"]
+    B --> C["Attribute<br/>Validations"]
+    C --> D["Node Definition<br/>Schema Validation"]
+    D --> E["Sub-Workflow<br/>Validations"]
+    E --> F["Validation UI<br/>+ Deploy Gate"]
+    style F fill:#10B981,color:#fff
+```
+
+### Why a Dedicated Phase
+
+Earlier phases introduced validation incrementally, a cycle check here, a port type check there. This phase consolidates everything into a coherent framework with consistent error types, severity levels, and UI feedback. Think of it like building a house: the earlier phases installed smoke detectors in individual rooms, this phase installs the central fire alarm panel that ties them all together and makes sure nothing was missed.
+
+The "one flow per canvas" rule we're adding changes the structural contract of what a workflow is. That ripple touches graph validation, deploy gating, the execution model, and the UI. Better to do it deliberately in one focused phase than to scatter it across patches.
+
+### Validation Architecture
+
+All validation lives in the domain layer. No HTTP, no database, no UI concerns. The validators take a `Workflow` and return a slice of `ValidationResult`. The service layer calls the validators, the HTTP handlers translate results into UI feedback.
+
+```mermaid
+graph TB
+    subgraph "Domain Layer"
+        V["Workflow.Validate()"]
+        GV["Graph Validators"]
+        PV["Port + Edge Validators"]
+        AV["Attribute Validators"]
+        SV["Sub-Workflow Validators"]
+        VR["[]ValidationResult"]
+    end
+
+    subgraph "Validation Results"
+        ERR["Errors<br/>(block deploy)"]
+        WARN["Warnings<br/>(surface but allow)"]
+        INFO["Info<br/>(suggestions)"]
+    end
+
+    subgraph "Consumers"
+        DEPLOY["Deploy Gate<br/>(rejects on errors)"]
+        UI["Canvas UI<br/>(highlights + toast)"]
+        SAVE["Auto-Save<br/>(runs validation, stores results)"]
+    end
+
+    V --> GV
+    V --> PV
+    V --> AV
+    V --> SV
+    GV --> VR
+    PV --> VR
+    AV --> VR
+    SV --> VR
+    VR --> ERR
+    VR --> WARN
+    VR --> INFO
+    ERR --> DEPLOY
+    ERR --> UI
+    WARN --> UI
+    WARN --> DEPLOY
+    INFO --> UI
+```
+
+#### Validation Result Types
+
+```go
+// internal/domain/validation.go
+package domain
+
+type Severity string
+
+const (
+    SeverityError   Severity = "error"   // Blocks deploy
+    SeverityWarning Severity = "warning" // Surfaced but doesn't block
+    SeverityInfo    Severity = "info"    // Suggestion, never blocks
+)
+
+type ValidationCategory string
+
+const (
+    CategoryGraph      ValidationCategory = "graph"
+    CategoryPort       ValidationCategory = "port"
+    CategoryEdge       ValidationCategory = "edge"
+    CategoryAttribute  ValidationCategory = "attribute"
+    CategorySubworkflow ValidationCategory = "subworkflow"
+    CategoryDefinition ValidationCategory = "definition"
+)
+
+type ValidationResult struct {
+    Severity  Severity           `json:"severity"`
+    Category  ValidationCategory `json:"category"`
+    NodeID    string             `json:"nodeId,omitempty"`    // empty for workflow-level issues
+    EdgeID    string             `json:"edgeId,omitempty"`    // for edge-specific issues
+    Field     string             `json:"field,omitempty"`     // for attribute issues
+    Code      string             `json:"code"`                // machine-readable, e.g. "DISCONNECTED_GRAPH"
+    Message   string             `json:"message"`             // human-readable explanation
+}
+
+// HasErrors returns true if any result has SeverityError.
+func HasErrors(results []ValidationResult) bool {
+    for _, r := range results {
+        if r.Severity == SeverityError {
+            return true
+        }
+    }
+    return false
+}
+
+// ByNode groups results by NodeID for UI rendering.
+func ByNode(results []ValidationResult) map[string][]ValidationResult { ... }
+
+// ErrorsOnly filters to just errors.
+func ErrorsOnly(results []ValidationResult) []ValidationResult { ... }
+
+// WarningsOnly filters to just warnings.
+func WarningsOnly(results []ValidationResult) []ValidationResult { ... }
+```
+
+#### The Master Validate Method
+
+```go
+// internal/domain/workflow.go
+
+// Validate runs all validators against the workflow and returns every issue found.
+// This is the single entry point. Callers never run individual validators directly.
+func (w *Workflow) Validate(registry NodeDefinitionRegistry) []ValidationResult {
+    var results []ValidationResult
+
+    results = append(results, w.validateGraphStructure()...)
+    results = append(results, w.validateEdges(registry)...)
+    results = append(results, w.validateAttributes(registry)...)
+    results = append(results, w.validateSubworkflows(registry)...)
+
+    return results
+}
+```
+
+### Story 6.1: Single Connected Graph Enforcement
+
+**What:** The most important new rule. A workflow must be a single connected directed graph. You can't have two disconnected "islands" of nodes on the same canvas. If you want composition, use sub-workflows.
+
+This is a lesson from both Zapier and n8n. Zapier enforces one trigger per Zap as a hard rule. n8n technically allows multiple triggers on one canvas, but the community has learned the hard way that it causes race conditions, confusing execution history, and debugging nightmares. The consensus is clear: one flow, one canvas.
+
+**Why it matters for Graphiti specifically:**
+- The execution engine does a topological sort of the entire workflow definition. Disconnected subgraphs create ambiguity about what "execute this workflow" means.
+- Deploy sends one payload per workflow. Multiple disconnected flows in one payload forces the engine to figure out which subgraph to run for a given trigger.
+- Execution mode shows per-node status. If only one subgraph executes, the other subgraph's nodes sit in "pending" forever, which looks broken.
+- Undo/redo history is per-workflow. Two unrelated flows sharing an undo stack leads to confusing behavior.
+
+**The algorithm:** Run a BFS/DFS from any node. If the traversal doesn't reach every node in the workflow (treating edges as undirected for connectivity purposes), the graph is disconnected.
+
+```go
+// internal/domain/validation_graph.go
+package domain
+
+func (w *Workflow) validateGraphStructure() []ValidationResult {
+    var results []ValidationResult
+
+    if len(w.Nodes) == 0 {
+        results = append(results, ValidationResult{
+            Severity: SeverityWarning,
+            Category: CategoryGraph,
+            Code:     "EMPTY_WORKFLOW",
+            Message:  "This workflow has no nodes. Add at least one node to get started.",
+        })
+        return results
+    }
+
+    // Check connectivity (treat edges as undirected for this check)
+    components := w.findConnectedComponents()
+    if len(components) > 1 {
+        // Find the smaller components (the "islands" that should be separate workflows)
+        // The largest component is assumed to be the "main" flow
+        largest := 0
+        for i, c := range components {
+            if len(c) > len(components[largest]) {
+                largest = i
+            }
+        }
+        for i, component := range components {
+            if i == largest {
+                continue
+            }
+            for _, nodeID := range component {
+                results = append(results, ValidationResult{
+                    Severity: SeverityError,
+                    Category: CategoryGraph,
+                    NodeID:   nodeID,
+                    Code:     "DISCONNECTED_SUBGRAPH",
+                    Message:  "This node is not connected to the main flow. Every node must be reachable from a source node. Consider moving disconnected nodes into a separate workflow or connecting them to the main flow.",
+                })
+            }
+        }
+    }
+
+    // Must have at least one source node (a node with no input edges)
+    sources := w.findSourceNodes()
+    if len(sources) == 0 && len(w.Nodes) > 0 {
+        results = append(results, ValidationResult{
+            Severity: SeverityError,
+            Category: CategoryGraph,
+            Code:     "NO_SOURCE_NODE",
+            Message:  "This workflow has no entry point. Add a source node (a node with no inputs) to define where data enters the workflow.",
+        })
+    }
+
+    // Must have at least one terminal node (a node whose outputs have no edges)
+    terminals := w.findTerminalNodes()
+    if len(terminals) == 0 && len(w.Nodes) > 0 {
+        results = append(results, ValidationResult{
+            Severity: SeverityWarning,
+            Category: CategoryGraph,
+            Code:     "NO_TERMINAL_NODE",
+            Message:  "This workflow has no endpoint. Every flow should end somewhere. Check if all output ports are connected but the workflow never reaches a final destination.",
+        })
+    }
+
+    // Cycle detection (DAG enforcement)
+    if cycle := w.detectCycle(); cycle != nil {
+        nodeNames := make([]string, len(cycle))
+        for i, id := range cycle {
+            if n := w.FindNode(id); n != nil {
+                nodeNames[i] = n.Label
+            } else {
+                nodeNames[i] = id
+            }
+        }
+        results = append(results, ValidationResult{
+            Severity: SeverityError,
+            Category: CategoryGraph,
+            Code:     "CYCLE_DETECTED",
+            Message:  fmt.Sprintf("Circular dependency detected: %s. Workflows must be directed acyclic graphs (no loops). Use a Loop control node if you need iteration.", strings.Join(nodeNames, " → ")),
+        })
+    }
+
+    return results
+}
+
+// findConnectedComponents returns groups of node IDs that are connected to each other.
+// Treats edges as undirected (A→B means A and B are in the same component).
+func (w *Workflow) findConnectedComponents() [][]string {
+    if len(w.Nodes) == 0 {
+        return nil
+    }
+
+    // Build adjacency list (undirected)
+    adj := make(map[string][]string)
+    for _, node := range w.Nodes {
+        adj[node.ID] = []string{}
+    }
+    for _, edge := range w.Edges {
+        adj[edge.SourceNodeID] = append(adj[edge.SourceNodeID], edge.TargetNodeID)
+        adj[edge.TargetNodeID] = append(adj[edge.TargetNodeID], edge.SourceNodeID)
+    }
+
+    visited := make(map[string]bool)
+    var components [][]string
+
+    for _, node := range w.Nodes {
+        if visited[node.ID] {
+            continue
+        }
+        // BFS from this node
+        var component []string
+        queue := []string{node.ID}
+        visited[node.ID] = true
+        for len(queue) > 0 {
+            current := queue[0]
+            queue = queue[1:]
+            component = append(component, current)
+            for _, neighbor := range adj[current] {
+                if !visited[neighbor] {
+                    visited[neighbor] = true
+                    queue = append(queue, neighbor)
+                }
+            }
+        }
+        components = append(components, component)
+    }
+
+    return components
+}
+
+// findSourceNodes returns nodes that have no incoming edges.
+func (w *Workflow) findSourceNodes() []string { ... }
+
+// findTerminalNodes returns nodes whose output ports have no outgoing edges.
+func (w *Workflow) findTerminalNodes() []string { ... }
+
+// detectCycle returns the cycle path if one exists, nil otherwise.
+// Uses Kahn's algorithm or DFS with coloring.
+func (w *Workflow) detectCycle() []string { ... }
+```
+
+**Acceptance Criteria:**
+
+- [ ] A workflow with two disconnected groups of nodes returns `DISCONNECTED_SUBGRAPH` errors for each node in the smaller group(s)
+- [ ] A single connected workflow with all nodes reachable passes the connectivity check
+- [ ] An empty workflow returns `EMPTY_WORKFLOW` warning (not error, since the user might just be starting)
+- [ ] A workflow with all processing/destination nodes but no source returns `NO_SOURCE_NODE` error
+- [ ] A workflow with all source/processing nodes but every output connected (nothing terminates) returns `NO_TERMINAL_NODE` warning
+- [ ] A simple cycle (A → B → A) is detected and reported with both node names
+- [ ] A longer cycle (A → B → C → A) is detected and the full path is listed in the message
+- [ ] A diamond pattern (A → B, A → C, B → D, C → D) does NOT trigger a false cycle detection
+- [ ] The error messages are human-readable and suggest how to fix the problem
+- [ ] The `DISCONNECTED_SUBGRAPH` error attaches to each orphaned node's `NodeID`, allowing the UI to highlight them
+- [ ] Connectivity check treats edges as undirected (if A → B, both A and B are in the same component)
+- [ ] A single isolated node (no edges at all) is reported as `DISCONNECTED_SUBGRAPH` if other nodes exist
+- [ ] A single isolated node as the only node in the workflow returns `EMPTY_WORKFLOW`-adjacent guidance (no error, it's just a starting point)
+
+**Test cases (table-driven):**
+
+| Scenario | Nodes | Edges | Expected Code | Severity |
+|---|---|---|---|---|
+| Empty workflow | 0 | 0 | `EMPTY_WORKFLOW` | warning |
+| Single node, no edges | 1 | 0 | none (valid starting point) | pass |
+| Two nodes, one edge | A, B | A→B | none | pass |
+| Two nodes, no edge | A, B | none | `DISCONNECTED_SUBGRAPH` on smaller | error |
+| Two separate pairs | A,B,C,D | A→B, C→D | `DISCONNECTED_SUBGRAPH` on C,D | error |
+| Three components | A,B,C,D,E | A→B, C→D | `DISCONNECTED_SUBGRAPH` on smaller two | error |
+| Diamond (no cycle) | A,B,C,D | A→B, A→C, B→D, C→D | none | pass |
+| Simple cycle | A,B | A→B, B→A | `CYCLE_DETECTED` | error |
+| Long cycle | A,B,C | A→B, B→C, C→A | `CYCLE_DETECTED` | error |
+| Self-loop | A | A→A | `CYCLE_DETECTED` | error |
+| No source node | A,B | A→B (A has inputs defined) | `NO_SOURCE_NODE` | error |
+| No terminal node | A,B,C | A→B, B→C, C→A | `CYCLE_DETECTED` + `NO_TERMINAL_NODE` | error + warning |
+| Linear chain of 5 | A,B,C,D,E | A→B→C→D→E | none | pass |
+| Fan-out from source | A,B,C,D | A→B, A→C, A→D | none | pass |
+| Fan-in to terminal | A,B,C,D | A→D, B→D, C→D | none | pass |
+| Large disconnected (50+50) | 100 nodes | Two 50-node chains | `DISCONNECTED_SUBGRAPH` on smaller chain | error |
+
+#### Story 6.2: Edge and Port Validation
+
+**What:** Validate every edge in the workflow against port type compatibility, connection limits, directionality rules, and the node definition's connection rules.
+
+```go
+// internal/domain/validation_edges.go
+package domain
+
+func (w *Workflow) validateEdges(registry NodeDefinitionRegistry) []ValidationResult {
+    var results []ValidationResult
+
+    for _, edge := range w.Edges {
+        results = append(results, w.validateSingleEdge(edge, registry)...)
+    }
+
+    // Check for duplicate edges (same source port → same target port)
+    results = append(results, w.validateNoDuplicateEdges()...)
+
+    // Check maxConnections on all ports
+    results = append(results, w.validateConnectionLimits(registry)...)
+
+    return results
+}
+```
+
+**Validation rules:**
+
+| Code | Severity | Rule |
+|---|---|---|
+| `EDGE_MISSING_SOURCE` | error | The source node ID on an edge doesn't match any node in the workflow |
+| `EDGE_MISSING_TARGET` | error | The target node ID on an edge doesn't match any node in the workflow |
+| `EDGE_MISSING_SOURCE_PORT` | error | The source port ID doesn't exist on the source node's definition |
+| `EDGE_MISSING_TARGET_PORT` | error | The target port ID doesn't exist on the target node's definition |
+| `EDGE_WRONG_DIRECTION` | error | The source port is an input port or the target port is an output port |
+| `PORT_TYPE_MISMATCH` | error | Output port type doesn't match input port type (e.g., data → error) |
+| `PORT_MAX_CONNECTIONS` | error | An input port has more edges than its `maxConnections` allows |
+| `EDGE_DUPLICATE` | error | Two edges connect the exact same output port to the exact same input port |
+| `EDGE_SELF_REFERENCE` | error | An edge connects a node to itself |
+| `CONNECTION_CATEGORY_DENIED` | error | The node definition's `connectionRules.allowedTargetCategories` doesn't include the target node's category |
+| `CONNECTION_PORT_TYPE_DENIED` | error | The node definition's `connectionRules.allowedTargetPorts` doesn't include the target port's type |
+
+**Acceptance Criteria:**
+
+- [ ] An edge from a `data` output to a `control` input returns `PORT_TYPE_MISMATCH`
+- [ ] An edge from a `data` output to a `data` input passes
+- [ ] An edge from an `error` output to an `error` input passes
+- [ ] An edge from an `error` output to a `data` input (when the target node accepts it, like HTTP Response) passes if the node definition's connection rules allow it
+- [ ] An input port with `maxConnections: 1` that already has one edge rejects a second edge with `PORT_MAX_CONNECTIONS`
+- [ ] An output port with `maxConnections: -1` (unlimited) accepts any number of edges
+- [ ] An edge referencing a node ID that doesn't exist returns `EDGE_MISSING_SOURCE` or `EDGE_MISSING_TARGET`
+- [ ] An edge referencing a port ID that doesn't exist on the node returns `EDGE_MISSING_SOURCE_PORT` or `EDGE_MISSING_TARGET_PORT`
+- [ ] An edge from an input port to an output port (backwards) returns `EDGE_WRONG_DIRECTION`
+- [ ] Two identical edges (same source port, same target port) return `EDGE_DUPLICATE`
+- [ ] An edge from node A's output to node A's input returns `EDGE_SELF_REFERENCE`
+- [ ] A Source node's output connected to another Source node's input returns `CONNECTION_CATEGORY_DENIED` if the source's connection rules only allow Processing and Destinations
+- [ ] All error messages include the names of the involved nodes and ports (not just IDs)
+- [ ] Each validation rule has a minimum of 3 test cases: one passing, one failing, one edge case
+
+**Test cases (table-driven):**
+
+| Scenario | Source Port Type | Target Port Type | Expected |
+|---|---|---|---|
+| data → data | data | data | pass |
+| data → control | data | control | `PORT_TYPE_MISMATCH` |
+| data → error | data | error | `PORT_TYPE_MISMATCH` |
+| error → error | error | error | pass |
+| error → data (if allowed by definition) | error | data | pass (when connectionRules permit) |
+| control → control | control | control | pass |
+| control → data | control | data | `PORT_TYPE_MISMATCH` |
+
+| Scenario | Max Connections | Current Count | Action | Expected |
+|---|---|---|---|---|
+| First connection to input (max 1) | 1 | 0 | add edge | pass |
+| Second connection to input (max 1) | 1 | 1 | add edge | `PORT_MAX_CONNECTIONS` |
+| First connection to input (max 3) | 3 | 0 | add edge | pass |
+| Fourth connection to input (max 3) | 3 | 3 | add edge | `PORT_MAX_CONNECTIONS` |
+| Unlimited output | -1 | 50 | add edge | pass |
+
+#### Story 6.3: Attribute Validation
+
+**What:** Validate every node's attribute values against the rules defined in the node definition's YAML. This catches things like missing required fields, wrong types, enum values that don't match the allowed list, and custom expression rules.
+
+```go
+// internal/domain/validation_attributes.go
+package domain
+
+func (w *Workflow) validateAttributes(registry NodeDefinitionRegistry) []ValidationResult {
+    var results []ValidationResult
+
+    for _, node := range w.Nodes {
+        def := registry.GetByID(node.DefinitionID)
+        if def == nil {
+            results = append(results, ValidationResult{
+                Severity: SeverityError,
+                Category: CategoryDefinition,
+                NodeID:   node.ID,
+                Code:     "UNKNOWN_DEFINITION",
+                Message:  fmt.Sprintf("Node '%s' references definition '%s' which doesn't exist in the registry. The node type may have been removed.", node.Label, node.DefinitionID),
+            })
+            continue
+        }
+
+        for _, attrDef := range def.Attributes {
+            value, exists := node.AttributeValues[attrDef.ID]
+            results = append(results, validateSingleAttribute(node, attrDef, value, exists)...)
+        }
+
+        // Run custom attribute rules from the YAML definition
+        for _, rule := range def.Validation.AttributeRules {
+            results = append(results, evaluateAttributeRule(node, rule)...)
+        }
+    }
+
+    return results
+}
+```
+
+**Validation rules:**
+
+| Code | Severity | Rule |
+|---|---|---|
+| `ATTR_REQUIRED_MISSING` | error | A `required: true` attribute has no value or is empty string |
+| `ATTR_TYPE_MISMATCH` | error | Value doesn't match the attribute's declared type (e.g., string where number expected) |
+| `ATTR_ENUM_INVALID` | error | Value isn't in the attribute's `options` list |
+| `ATTR_NUMBER_BELOW_MIN` | error | Number value is below the attribute's `min` |
+| `ATTR_NUMBER_ABOVE_MAX` | error | Number value is above the attribute's `max` |
+| `ATTR_SECRET_ENV_SYNTAX` | warning | A secret value doesn't use `${VAR}` syntax (might be a hardcoded secret) |
+| `ATTR_EXPRESSION_FAILED` | error | A custom `attributeRules` expression evaluated to false |
+| `ATTR_JSON_INVALID` | error | A `json` type attribute contains invalid JSON |
+| `UNKNOWN_DEFINITION` | error | The node references a definition ID that's not in the registry |
+| `ATTR_UNEXPECTED` | info | The node has an attribute value that doesn't match any attribute in the definition (stale data) |
+
+**Acceptance Criteria:**
+
+- [ ] A node with a required attribute set to empty string returns `ATTR_REQUIRED_MISSING`
+- [ ] A node with a required attribute set to `nil` returns `ATTR_REQUIRED_MISSING`
+- [ ] A node with a required attribute filled in passes
+- [ ] A node with a non-required attribute left empty passes
+- [ ] A `number` attribute with value `"hello"` returns `ATTR_TYPE_MISMATCH`
+- [ ] A `boolean` attribute with value `"maybe"` returns `ATTR_TYPE_MISMATCH`
+- [ ] An `enum` attribute with value `"invalid-option"` returns `ATTR_ENUM_INVALID`
+- [ ] An `enum` attribute with a value from the `options` list passes
+- [ ] A number attribute with value 5 and `min: 10` returns `ATTR_NUMBER_BELOW_MIN`
+- [ ] A number attribute with value 500 and `max: 100` returns `ATTR_NUMBER_ABOVE_MAX`
+- [ ] A number attribute with value 50, `min: 10`, `max: 100` passes
+- [ ] A `secret` attribute with value `"my-plain-password"` returns `ATTR_SECRET_ENV_SYNTAX` warning
+- [ ] A `secret` attribute with value `"${MY_SECRET}"` passes
+- [ ] A `json` attribute with value `"not json at all"` returns `ATTR_JSON_INVALID`
+- [ ] A `json` attribute with value `"{\"key\": \"value\"}"` passes
+- [ ] A custom expression rule like `endpoint.startsWith('/')` returns `ATTR_EXPRESSION_FAILED` when endpoint is `"no-slash"`
+- [ ] A node referencing a deleted definition returns `UNKNOWN_DEFINITION`
+- [ ] Error messages include the node label, attribute label, and current value (masked for secrets)
+
+**Test cases (table-driven):**
+
+| Attribute Type | Value | Required | Min | Max | Options | Expected |
+|---|---|---|---|---|---|---|
+| string | `""` | true | - | - | - | `ATTR_REQUIRED_MISSING` |
+| string | `"hello"` | true | - | - | - | pass |
+| string | `""` | false | - | - | - | pass |
+| number | `42` | true | 0 | 100 | - | pass |
+| number | `-5` | false | 0 | 100 | - | `ATTR_NUMBER_BELOW_MIN` |
+| number | `150` | false | 0 | 100 | - | `ATTR_NUMBER_ABOVE_MAX` |
+| number | `"not a number"` | false | - | - | - | `ATTR_TYPE_MISMATCH` |
+| boolean | `true` | false | - | - | - | pass |
+| boolean | `false` | false | - | - | - | pass |
+| boolean | `"yes"` | false | - | - | - | `ATTR_TYPE_MISMATCH` |
+| enum | `"wav"` | true | - | - | `[wav,mp3,ogg]` | pass |
+| enum | `"aac"` | true | - | - | `[wav,mp3,ogg]` | `ATTR_ENUM_INVALID` |
+| enum | `""` | true | - | - | `[wav,mp3,ogg]` | `ATTR_REQUIRED_MISSING` |
+| secret | `"${TOKEN}"` | true | - | - | - | pass |
+| secret | `"plaintext"` | true | - | - | - | `ATTR_SECRET_ENV_SYNTAX` (warning) |
+| secret | `""` | true | - | - | - | `ATTR_REQUIRED_MISSING` |
+| json | `"{}"` | false | - | - | - | pass |
+| json | `"[1,2,3]"` | false | - | - | - | pass |
+| json | `"{broken"` | false | - | - | - | `ATTR_JSON_INVALID` |
+| json | `""` | true | - | - | - | `ATTR_REQUIRED_MISSING` |
+
+#### Story 6.4: Node Definition Schema Validation
+
+**What:** Validate the YAML node definitions themselves when they're loaded at startup. Catch problems in the node type configuration before any workflow ever uses them.
+
+```go
+// internal/domain/validation_definition.go
+package domain
+
+func ValidateNodeDefinition(def *NodeDefinition) []ValidationResult {
+    var results []ValidationResult
+
+    // Required fields
+    if def.ID == "" {
+        results = append(results, validationError("DEFINITION_MISSING_ID", ...))
+    }
+    if def.Name == "" {
+        results = append(results, validationError("DEFINITION_MISSING_NAME", ...))
+    }
+    if def.Category.Group == "" {
+        results = append(results, validationError("DEFINITION_MISSING_CATEGORY", ...))
+    }
+
+    // Shape type must be from the allowed set
+    if !isValidShapeType(def.Shape.Type) {
+        results = append(results, validationError("DEFINITION_INVALID_SHAPE", ...))
+    }
+
+    // Port validation
+    for _, port := range append(def.Inputs, def.Outputs...) {
+        if !isValidPortType(port.Type) {
+            results = append(results, validationError("DEFINITION_INVALID_PORT_TYPE", ...))
+        }
+        if !isValidPortPosition(port.Position) {
+            results = append(results, validationError("DEFINITION_INVALID_PORT_POSITION", ...))
+        }
+    }
+
+    // Port ID uniqueness within a definition
+    portIDs := make(map[string]bool)
+    for _, port := range append(def.Inputs, def.Outputs...) {
+        if portIDs[port.ID] {
+            results = append(results, validationError("DEFINITION_DUPLICATE_PORT_ID", ...))
+        }
+        portIDs[port.ID] = true
+    }
+
+    // Attribute validation
+    attrIDs := make(map[string]bool)
+    for _, attr := range def.Attributes {
+        if attrIDs[attr.ID] {
+            results = append(results, validationError("DEFINITION_DUPLICATE_ATTR_ID", ...))
+        }
+        attrIDs[attr.ID] = true
+
+        if !isValidAttributeType(attr.Type) {
+            results = append(results, validationError("DEFINITION_INVALID_ATTR_TYPE", ...))
+        }
+        if attr.Type == AttrTypeEnum && len(attr.Options) == 0 {
+            results = append(results, validationError("DEFINITION_ENUM_NO_OPTIONS", ...))
+        }
+    }
+
+    // Connection rules reference valid ports
+    for _, rule := range def.Validation.ConnectionRules {
+        if !portExists(def.Outputs, rule.OutputPort) {
+            results = append(results, validationError("DEFINITION_RULE_BAD_PORT_REF", ...))
+        }
+    }
+
+    return results
+}
+```
+
+**Validation rules:**
+
+| Code | Severity | Rule |
+|---|---|---|
+| `DEFINITION_MISSING_ID` | error | `metadata.id` is empty |
+| `DEFINITION_MISSING_NAME` | error | `metadata.name` is empty |
+| `DEFINITION_MISSING_CATEGORY` | error | `category.group` is empty |
+| `DEFINITION_INVALID_SHAPE` | error | `shape.type` isn't one of the allowed values |
+| `DEFINITION_INVALID_PORT_TYPE` | error | Port type isn't `data`, `control`, or `error` |
+| `DEFINITION_INVALID_PORT_POSITION` | error | Port position isn't one of the allowed anchors |
+| `DEFINITION_DUPLICATE_PORT_ID` | error | Two ports in the same definition share an ID |
+| `DEFINITION_DUPLICATE_ATTR_ID` | error | Two attributes in the same definition share an ID |
+| `DEFINITION_INVALID_ATTR_TYPE` | error | Attribute type isn't one of the allowed values |
+| `DEFINITION_ENUM_NO_OPTIONS` | error | An enum attribute has no `options` list |
+| `DEFINITION_RULE_BAD_PORT_REF` | error | A `connectionRules` entry references a port that doesn't exist on the definition |
+| `DEFINITION_INVALID_API_VERSION` | error | `apiVersion` isn't `graphiti/v1` |
+| `DEFINITION_INVALID_KIND` | error | `kind` isn't `NodeDefinition` |
+| `DEFINITION_WIDTH_RANGE` | warning | `shape.width` is outside `minWidth`/`maxWidth` range |
+| `DEFINITION_DUPLICATE_ACROSS_FILES` | error | Two YAML files declare the same `metadata.id` |
+
+**Acceptance Criteria:**
+
+- [ ] A definition with empty `metadata.id` returns `DEFINITION_MISSING_ID`
+- [ ] A definition with `shape.type: "pentagon"` returns `DEFINITION_INVALID_SHAPE`
+- [ ] A definition with two ports both named `out-main` returns `DEFINITION_DUPLICATE_PORT_ID`
+- [ ] A definition with a port of type `"stream"` returns `DEFINITION_INVALID_PORT_TYPE`
+- [ ] A definition with an enum attribute and no `options` returns `DEFINITION_ENUM_NO_OPTIONS`
+- [ ] A connection rule referencing port `"out-nonexistent"` returns `DEFINITION_RULE_BAD_PORT_REF`
+- [ ] Two definitions loaded from different YAML files with the same `metadata.id` returns `DEFINITION_DUPLICATE_ACROSS_FILES`
+- [ ] A valid, complete definition passes all checks with zero results
+- [ ] All 6 standard node types from Phase 4.5 pass definition validation
+- [ ] The 4 existing PRD sample definitions pass validation
+
+#### Story 6.5: Sub-Workflow Validation
+
+**What:** Validate sub-workflow references to prevent circular chains and dangling references.
+
+```go
+// internal/domain/validation_subworkflow.go
+package domain
+
+func (w *Workflow) validateSubworkflows(registry NodeDefinitionRegistry) []ValidationResult {
+    var results []ValidationResult
+
+    for _, node := range w.Nodes {
+        def := registry.GetByID(node.DefinitionID)
+        if def == nil || def.Shape.Type != ShapeSubWorkflow {
+            continue
+        }
+
+        workflowRef, _ := node.AttributeValues["workflow_ref"].(string)
+
+        if workflowRef == "" {
+            results = append(results, ValidationResult{
+                Severity: SeverityError,
+                Category: CategorySubworkflow,
+                NodeID:   node.ID,
+                Code:     "SUBWORKFLOW_NO_REFERENCE",
+                Message:  fmt.Sprintf("Sub-workflow node '%s' has no referenced workflow. Select a workflow in the configuration panel.", node.Label),
+            })
+            continue
+        }
+
+        if workflowRef == w.ID {
+            results = append(results, ValidationResult{
+                Severity: SeverityError,
+                Category: CategorySubworkflow,
+                NodeID:   node.ID,
+                Code:     "SUBWORKFLOW_SELF_REFERENCE",
+                Message:  fmt.Sprintf("Sub-workflow node '%s' references itself. A workflow cannot contain itself as a sub-workflow.", node.Label),
+            })
+            continue
+        }
+
+        // Circular reference detection requires checking the referenced workflow's
+        // sub-workflow nodes recursively. This is done at deploy time when all
+        // workflows are available.
+    }
+
+    return results
+}
+
+// ValidateSubworkflowChain checks for circular references across workflows.
+// Called at deploy time with access to the full workflow repository.
+func ValidateSubworkflowChain(workflowID string, resolver WorkflowResolver, visited map[string]bool) []ValidationResult {
+    if visited[workflowID] {
+        return []ValidationResult{{
+            Severity: SeverityError,
+            Category: CategorySubworkflow,
+            Code:     "SUBWORKFLOW_CIRCULAR_REFERENCE",
+            Message:  fmt.Sprintf("Circular sub-workflow reference detected. Workflow '%s' appears in its own sub-workflow chain.", workflowID),
+        }}
+    }
+    visited[workflowID] = true
+
+    wf, err := resolver.GetByID(workflowID)
+    if err != nil {
+        return []ValidationResult{{
+            Severity: SeverityError,
+            Category: CategorySubworkflow,
+            Code:     "SUBWORKFLOW_NOT_FOUND",
+            Message:  fmt.Sprintf("Referenced workflow '%s' does not exist.", workflowID),
+        }}
+    }
+
+    var results []ValidationResult
+    for _, node := range wf.Nodes {
+        if ref, ok := node.AttributeValues["workflow_ref"].(string); ok && ref != "" {
+            results = append(results, ValidateSubworkflowChain(ref, resolver, visited)...)
+        }
+    }
+    return results
+}
+```
+
+**Validation rules:**
+
+| Code | Severity | Rule |
+|---|---|---|
+| `SUBWORKFLOW_NO_REFERENCE` | error | Sub-workflow node has no workflow selected |
+| `SUBWORKFLOW_SELF_REFERENCE` | error | Sub-workflow node references the workflow it's in |
+| `SUBWORKFLOW_NOT_FOUND` | error | Referenced workflow ID doesn't exist |
+| `SUBWORKFLOW_CIRCULAR_REFERENCE` | error | A → B → C → A chain detected |
+| `SUBWORKFLOW_NESTING_DEPTH` | warning | Sub-workflow nesting exceeds 5 levels |
+
+**Acceptance Criteria:**
+
+- [ ] A sub-workflow node with empty `workflow_ref` returns `SUBWORKFLOW_NO_REFERENCE`
+- [ ] A sub-workflow node referencing its own workflow ID returns `SUBWORKFLOW_SELF_REFERENCE`
+- [ ] Workflow A containing a sub-workflow pointing to Workflow B, and B containing a sub-workflow pointing to A, returns `SUBWORKFLOW_CIRCULAR_REFERENCE`
+- [ ] A three-level chain (A → B → C → A) is detected
+- [ ] A valid chain (A → B → C, no loop) passes
+- [ ] A sub-workflow referencing a deleted/nonexistent workflow returns `SUBWORKFLOW_NOT_FOUND`
+- [ ] Nesting deeper than 5 levels returns `SUBWORKFLOW_NESTING_DEPTH` warning
+- [ ] The `visited` map correctly resets per validation call (no leaking state between runs)
+
+**Test cases (table-driven):**
+
+| Scenario | Workflows | Sub-workflow refs | Expected |
+|---|---|---|---|
+| No sub-workflows | A | none | pass |
+| Valid reference | A, B | A references B | pass |
+| Self-reference | A | A references A | `SUBWORKFLOW_SELF_REFERENCE` |
+| Mutual reference | A, B | A→B, B→A | `SUBWORKFLOW_CIRCULAR_REFERENCE` |
+| Three-way cycle | A, B, C | A→B, B→C, C→A | `SUBWORKFLOW_CIRCULAR_REFERENCE` |
+| Deep but valid chain | A,B,C,D,E | A→B→C→D→E | pass |
+| Deep chain (6 levels) | A,B,C,D,E,F,G | A→B→C→D→E→F→G | `SUBWORKFLOW_NESTING_DEPTH` (warning) |
+| Deleted reference | A | A references "deleted-id" | `SUBWORKFLOW_NOT_FOUND` |
+| Diamond (A→B, A→C, B→D, C→D) | A,B,C,D | A→B, A→C | pass (not a cycle) |
+
+#### Story 6.6: Deploy Gate and Validation API Endpoint
+
+**What:** Wire the validation framework into the deploy flow. Deploy is blocked if any error-severity results exist. Expose a standalone validation endpoint so the UI can check validity before the user clicks Deploy.
+
+```go
+// internal/app/workflow_service.go
+
+func (s *WorkflowService) ValidateWorkflow(ctx context.Context, workflowID string) ([]domain.ValidationResult, error) {
+    wf, err := s.repo.GetByID(ctx, workflowID)
+    if err != nil {
+        return nil, err
+    }
+
+    results := wf.Validate(s.nodeRegistry)
+
+    // Sub-workflow chain validation (needs repo access)
+    for _, node := range wf.Nodes {
+        if ref, ok := node.AttributeValues["workflow_ref"].(string); ok && ref != "" {
+            visited := map[string]bool{wf.ID: true}
+            results = append(results, domain.ValidateSubworkflowChain(ref, s.repo, visited)...)
+        }
+    }
+
+    return results, nil
+}
+
+func (s *WorkflowService) DeployWorkflow(ctx context.Context, workflowID, target, userID string) (*domain.DeployResult, error) {
+    results, err := s.ValidateWorkflow(ctx, workflowID)
+    if err != nil {
+        return nil, err
+    }
+
+    if domain.HasErrors(results) {
+        return &domain.DeployResult{
+            Accepted:         false,
+            ValidationErrors: results,
+            Message:          fmt.Sprintf("Deployment blocked: %d error(s) found.", len(domain.ErrorsOnly(results))),
+        }, nil
+    }
+
+    // Proceed with deploy (warnings are included in the result but don't block)
+    // ...
+}
+```
+
+**API endpoint:**
+
+```
+POST /api/workflows/{id}/validate
+
+Response:
+{
+    "valid": false,
+    "errorCount": 3,
+    "warningCount": 1,
+    "infoCount": 0,
+    "results": [
+        {
+            "severity": "error",
+            "category": "graph",
+            "nodeId": "node-456",
+            "code": "DISCONNECTED_SUBGRAPH",
+            "message": "This node is not connected to the main flow..."
+        },
+        ...
+    ]
+}
+```
+
+**Acceptance Criteria:**
+
+- [ ] `POST /api/workflows/{id}/validate` runs all validators and returns the full results list
+- [ ] The response includes counts by severity: `errorCount`, `warningCount`, `infoCount`
+- [ ] The response includes a `valid` boolean (true if errorCount is 0)
+- [ ] `POST /api/workflows/{id}/deploy` calls validate internally before proceeding
+- [ ] Deploy is rejected with a clear message when errors exist
+- [ ] Deploy proceeds (with warnings surfaced) when only warnings/info exist
+- [ ] The validation endpoint is fast (under 100ms for a 100-node workflow)
+- [ ] Validation results are JSON-serializable for the API response
+- [ ] The deploy response includes validation results when rejected, so the UI can highlight problems
+
+#### Story 6.7: Canvas UI Validation Feedback
+
+**What:** When validation results come back, the canvas highlights problematic nodes and edges, and a toast or panel shows the error list.
+
+**Acceptance Criteria:**
+
+- [ ] Nodes with errors get a red dashed border and a small error badge count
+- [ ] Nodes with warnings get an amber dashed border and a small warning badge count
+- [ ] Edges with errors (type mismatch, etc.) turn red
+- [ ] Clicking an error in the toast/panel selects the associated node and scrolls the canvas to it
+- [ ] The error list groups results by node, with the node name as a header
+- [ ] Workflow-level errors (no source, disconnected graph) appear at the top of the list
+- [ ] The Deploy button itself shows a badge with the error count when the workflow is invalid
+- [ ] Validation runs on demand (when clicking Validate or Deploy), not continuously during editing
+- [ ] After fixing an error and re-validating, the highlights clear on nodes that are now valid
+- [ ] Error messages are displayed verbatim from the domain validator (no reformatting at the UI layer)
+
+#### Story 6.8: Real-Time Soft Validation During Building
+
+**What:** While the user is building (not deploying), provide lightweight visual cues for obvious issues. This doesn't run the full validator, it's just quick checks during canvas mutations.
+
+**Acceptance Criteria:**
+
+- [ ] When a node's required attribute is empty, the node shows a "Config" badge (instead of "Active")
+- [ ] When an edge is drawn to an incompatible port, the port flashes red and a brief tooltip explains why (this already exists from Phase 2, but now uses the same validation codes)
+- [ ] Disconnected nodes show a subtle dotted border (visual hint, not a blocking error)
+- [ ] These visual hints update immediately after each mutation (no server round-trip for simple checks)
+- [ ] The soft validation never blocks any operation. The user can always add, move, and connect freely during building.
+- [ ] Soft validation is purely visual. It doesn't produce `ValidationResult` objects or interact with the validation framework.
+
+### Validation Code Reference
+
+Complete list of all validation codes across all stories:
+
+| Code | Category | Severity | When |
+|---|---|---|---|
+| `EMPTY_WORKFLOW` | graph | warning | No nodes in the workflow |
+| `DISCONNECTED_SUBGRAPH` | graph | error | Node not reachable from the main connected component |
+| `NO_SOURCE_NODE` | graph | error | No node with zero incoming edges |
+| `NO_TERMINAL_NODE` | graph | warning | No node with unconnected outputs |
+| `CYCLE_DETECTED` | graph | error | Circular dependency in the graph |
+| `EDGE_MISSING_SOURCE` | edge | error | Edge references nonexistent source node |
+| `EDGE_MISSING_TARGET` | edge | error | Edge references nonexistent target node |
+| `EDGE_MISSING_SOURCE_PORT` | edge | error | Edge references nonexistent port on source |
+| `EDGE_MISSING_TARGET_PORT` | edge | error | Edge references nonexistent port on target |
+| `EDGE_WRONG_DIRECTION` | edge | error | Edge goes from input to output (backwards) |
+| `PORT_TYPE_MISMATCH` | port | error | Output port type doesn't match input port type |
+| `PORT_MAX_CONNECTIONS` | port | error | Port exceeds its `maxConnections` limit |
+| `EDGE_DUPLICATE` | edge | error | Identical edge already exists |
+| `EDGE_SELF_REFERENCE` | edge | error | Edge connects node to itself |
+| `CONNECTION_CATEGORY_DENIED` | edge | error | Target node's category not in `allowedTargetCategories` |
+| `CONNECTION_PORT_TYPE_DENIED` | edge | error | Target port type not in `allowedTargetPorts` |
+| `ATTR_REQUIRED_MISSING` | attribute | error | Required attribute is empty or nil |
+| `ATTR_TYPE_MISMATCH` | attribute | error | Value doesn't match declared type |
+| `ATTR_ENUM_INVALID` | attribute | error | Value not in the enum options list |
+| `ATTR_NUMBER_BELOW_MIN` | attribute | error | Number below minimum |
+| `ATTR_NUMBER_ABOVE_MAX` | attribute | error | Number above maximum |
+| `ATTR_SECRET_ENV_SYNTAX` | attribute | warning | Secret not using `${VAR}` syntax |
+| `ATTR_EXPRESSION_FAILED` | attribute | error | Custom expression rule returned false |
+| `ATTR_JSON_INVALID` | attribute | error | JSON attribute contains invalid JSON |
+| `UNKNOWN_DEFINITION` | definition | error | Node references unknown definition ID |
+| `ATTR_UNEXPECTED` | attribute | info | Node has attribute not in definition (stale) |
+| `DEFINITION_MISSING_ID` | definition | error | YAML missing `metadata.id` |
+| `DEFINITION_MISSING_NAME` | definition | error | YAML missing `metadata.name` |
+| `DEFINITION_MISSING_CATEGORY` | definition | error | YAML missing `category.group` |
+| `DEFINITION_INVALID_SHAPE` | definition | error | Unknown shape type |
+| `DEFINITION_INVALID_PORT_TYPE` | definition | error | Unknown port type |
+| `DEFINITION_INVALID_PORT_POSITION` | definition | error | Unknown port position |
+| `DEFINITION_DUPLICATE_PORT_ID` | definition | error | Same port ID used twice |
+| `DEFINITION_DUPLICATE_ATTR_ID` | definition | error | Same attribute ID used twice |
+| `DEFINITION_INVALID_ATTR_TYPE` | definition | error | Unknown attribute type |
+| `DEFINITION_ENUM_NO_OPTIONS` | definition | error | Enum with empty options |
+| `DEFINITION_RULE_BAD_PORT_REF` | definition | error | Connection rule references missing port |
+| `DEFINITION_INVALID_API_VERSION` | definition | error | Wrong apiVersion |
+| `DEFINITION_INVALID_KIND` | definition | error | Wrong kind |
+| `DEFINITION_WIDTH_RANGE` | definition | warning | Width outside min/max |
+| `DEFINITION_DUPLICATE_ACROSS_FILES` | definition | error | Same metadata.id in two files |
+| `SUBWORKFLOW_NO_REFERENCE` | subworkflow | error | Sub-workflow node has no workflow selected |
+| `SUBWORKFLOW_SELF_REFERENCE` | subworkflow | error | Sub-workflow references its own workflow |
+| `SUBWORKFLOW_NOT_FOUND` | subworkflow | error | Referenced workflow doesn't exist |
+| `SUBWORKFLOW_CIRCULAR_REFERENCE` | subworkflow | error | A→B→...→A chain |
+| `SUBWORKFLOW_NESTING_DEPTH` | subworkflow | warning | Nesting exceeds 5 levels |
+
+**Phase 6 Demo Checkpoint:**
+
+Open a workflow. Add two disconnected groups of nodes, don't wire them together. Click Deploy. A toast appears: "Deployment blocked: 3 errors found." The disconnected nodes have red dashed borders. Click an error in the list, the canvas pans to that node. Now wire them together, click Deploy again, errors clear. Add an edge from a data port to a control port. The port flashes red during the drag. Force it through validation: `PORT_TYPE_MISMATCH` appears. Delete the bad edge. Leave a required attribute empty. Deploy: `ATTR_REQUIRED_MISSING`. Fill it with garbage JSON where JSON is expected: `ATTR_JSON_INVALID`. Fix everything. Deploy succeeds, green flash, webhook fires. The validation framework caught everything the user got wrong and explained each problem in plain language.
+
 ## Testing Strategy Summary
 
 Testing isn't a phase, it's continuous. But here's the expected coverage at each layer:

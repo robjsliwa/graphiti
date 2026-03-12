@@ -159,7 +159,7 @@ func HelpModal(modKey string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "+0</kbd> Fit to View</div><div><kbd>Space+Drag</kbd> Pan</div><div><kbd>Esc</kbd> Deselect</div><div><kbd>?</kbd> This Help</div></div></div><button class=\"btn\" onclick=\"document.getElementById('shortcut-overlay')?.remove()\">Close</button></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "+0</kbd> Fit to View</div><div><kbd>Space+Drag</kbd> Pan</div><div><kbd>Tab</kbd> Next Node</div><div><kbd>Shift+Tab</kbd> Previous Node</div><div><kbd>Esc</kbd> Deselect</div><div><kbd>?</kbd> This Help</div></div></div><button class=\"btn\" onclick=\"document.getElementById('shortcut-overlay')?.remove()\">Close</button></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

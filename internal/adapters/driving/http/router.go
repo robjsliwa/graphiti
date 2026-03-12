@@ -61,8 +61,9 @@ func NewRouter(deps RouterDeps) http.Handler {
 	protected.HandleFunc("GET /api/nodes/search", handleNodeSearch(deps.NodeRegistry))
 	protected.HandleFunc("GET /api/nodes", handleNodeList(deps.NodeRegistry))
 
-	// Node config and attributes
+	// Node config, attributes, and sub-workflow reference
 	protected.HandleFunc("GET /api/workflows/{id}/nodes/{nodeId}/config", handleNodeConfig(deps.WorkflowSvc))
+	protected.HandleFunc("GET /api/workflows/{id}/nodes/{nodeId}/ref", handleNodeRef(deps.WorkflowSvc))
 	protected.HandleFunc("PATCH /api/workflows/{id}/nodes/{nodeId}/attributes", handleAttributeUpdate(deps.WorkflowSvc, deps.NodeRegistry))
 
 	// Clipboard

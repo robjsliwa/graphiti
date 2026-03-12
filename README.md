@@ -152,7 +152,7 @@ validation:
       allowedTargetCategories: ["Processing", "Destinations"]
 ```
 
-The project ships with 10 node definitions across four categories:
+The project ships with 11 node definitions across four categories:
 
 | Node | Category | Shape | Description |
 |---|---|---|---|
@@ -166,6 +166,7 @@ The project ships with 10 node definitions across four categories:
 | HTTP Response | Destinations | Rounded rect | Format and return HTTP responses |
 | Condition | Control | Diamond | Branch based on expression |
 | HTTP Router | Control | Diamond | Route requests by HTTP method |
+| Sub-Workflow | Control | Double-border rect | References another workflow as a reusable building block |
 
 ### Command Pattern & Undo/Redo
 
@@ -315,6 +316,160 @@ Light and dark themes are defined via CSS custom properties. The UI respects `da
 [data-theme="light"] { --bg: #F8F9FB; --surface: #FFFFFF; --accent: #3B82F6; }
 [data-theme="dark"]  { --bg: #0F1117; --surface: #1A1D27; --accent: #60A5FA; }
 ```
+
+The theme toggle button (top-right of every page) cycles through three modes:
+
+| Mode | Icon | Behavior |
+|---|---|---|
+| Light | Sun | Always light theme |
+| Dark | Moon | Always dark theme |
+| System | Gear | Follows OS `prefers-color-scheme` setting |
+
+The selected mode is persisted to `localStorage` and applied instantly on page load.
+
+### Sub-Workflows
+
+Sub-workflows let you compose workflows by referencing other workflows as reusable building blocks. This is the key to managing complexity — instead of one giant workflow, you break logic into smaller, testable pieces and wire them together.
+
+#### How to Use Sub-Workflows
+
+**1. Create the child workflow first.**
+
+Go to the dashboard, create a new workflow (e.g., "Email Notification"), build it out with its own nodes and edges, and deploy it. This is the workflow you'll reuse.
+
+**2. Add a Sub-Workflow node to the parent.**
+
+Open your parent workflow. In the **Components** palette on the left, find **Sub-Workflow** under the **Control Flow** category. Drag it onto the canvas.
+
+The node renders with a distinctive double-border rectangle to visually distinguish it from regular nodes:
+
+```
+┌─────────────────────┐
+│ ┌─────────────────┐ │
+│ │  📦 Sub-Workflow │ │
+│ │                 │ │
+│ │  Ref: Email...  │ │
+│ └─────────────────┘ │
+└─────────────────────┘
+```
+
+**3. Configure the reference.**
+
+Click the Sub-Workflow node to open the config panel on the right. Set these fields:
+
+| Field | Description |
+|---|---|
+| **Referenced Workflow** | The ID of the child workflow to execute (required) |
+| **Input Mapping** | JSON mapping parent data to child inputs, e.g., `{"recipient": "upstream.email"}` |
+| **Output Mapping** | JSON mapping child outputs back to parent, e.g., `{"status": "child.result"}` |
+
+**4. Wire it into your flow.**
+
+The Sub-Workflow node has three ports:
+
+| Port | Type | Description |
+|---|---|---|
+| **Input** (left) | Data | Receives data from upstream nodes |
+| **Output** (right) | Data | Passes results to downstream nodes |
+| **Error** (bottom) | Error | Routes errors to error handlers |
+
+Connect it like any other node — wire data in, wire results out.
+
+**5. Drill into the child workflow.**
+
+**Double-click** the Sub-Workflow node to navigate into the referenced workflow. The breadcrumb trail at the top updates to show:
+
+```
+Workflows / Parent Workflow / Child Workflow (sub-workflow)
+```
+
+Click the parent name in the breadcrumb to navigate back.
+
+#### Validation
+
+Sub-workflow validation catches common mistakes before deploy:
+
+| Validation | Severity | Description |
+|---|---|---|
+| `SUBWORKFLOW_NO_REFERENCE` | Error | No workflow selected in the Referenced Workflow field |
+| `SUBWORKFLOW_SELF_REFERENCE` | Error | Workflow references itself |
+| `SUBWORKFLOW_CIRCULAR_REFERENCE` | Error | A → B → A (or longer cycles like A → B → C → A) |
+| `SUBWORKFLOW_NOT_FOUND` | Error | Referenced workflow doesn't exist |
+| `SUBWORKFLOW_NESTING_DEPTH` | Warning | Nesting exceeds 5 levels deep |
+
+#### Sub-Workflow YAML Definition
+
+The built-in sub-workflow node is defined in `config/nodes/control/sub-workflow.yaml`:
+
+```yaml
+apiVersion: graphiti/v1
+kind: NodeDefinition
+metadata:
+  id: control-sub-workflow
+  name: Sub-Workflow
+  description: "References another workflow as a reusable building block"
+  icon: "📦"
+category:
+  group: Control Flow
+  order: 30
+shape:
+  type: sub-workflow        # renders with double-border rectangle
+  width: 220
+ports:
+  inputs:
+    - id: in-main
+      label: "Input"
+      type: data
+  outputs:
+    - id: out-main
+      label: "Output"
+      type: data
+    - id: out-error
+      label: "Error"
+      type: error
+attributes:
+  - id: workflow_ref
+    label: "Referenced Workflow"
+    type: workflow-reference
+    required: true
+    display: both
+  - id: input_mapping
+    label: "Input Mapping"
+    type: json
+    default: "{}"
+  - id: output_mapping
+    label: "Output Mapping"
+    type: json
+    default: "{}"
+```
+
+### Keyboard Shortcuts
+
+Press `?` to see the full shortcut map. Key bindings:
+
+| Shortcut | Action |
+|---|---|
+| Ctrl/Cmd+Z | Undo |
+| Ctrl/Cmd+Shift+Z | Redo |
+| Ctrl/Cmd+C/X/V | Copy/Cut/Paste |
+| Ctrl/Cmd+D | Duplicate |
+| Ctrl/Cmd+A | Select All |
+| Del/Backspace | Delete selection |
+| Tab / Shift+Tab | Cycle through nodes |
+| Ctrl/Cmd+=/-/0 | Zoom in/out/fit |
+| Space+Drag | Pan canvas |
+| Esc | Deselect |
+| ? | Toggle shortcut help |
+
+### Accessibility
+
+Graphiti targets WCAG 2.1 AA compliance:
+
+- All SVG nodes and edges have `aria-label` descriptions
+- Canvas operations are announced to screen readers via a live region
+- `:focus-visible` outlines are visible in both light and dark themes
+- The theme toggle includes dynamic `aria-label` describing current mode
+- Form labels in the config panel are properly associated with inputs
 
 ## Sample Execution Engine
 
@@ -709,13 +864,14 @@ See [`config/app.yaml`](config/app.yaml) for server, storage, and deploy setting
 - [x] Docker Compose stack (Graphiti + Engine + PostgreSQL)
 - [x] 24 engine tests covering types, graph, executors, runner, and HTTP handlers
 
-### Phase 5: Advanced Features — Planned
+### Phase 5: Advanced Features — **Complete**
 
-- [ ] Sub-workflow node type with drill-in navigation
-- [x] Theme system toggle (light/dark) — *completed in Phase 2*
-- [ ] Viewport culling and level-of-detail for large workflows
-- [x] Full keyboard shortcut map with help overlay — *completed in Phase 2*
-- [ ] Accessibility audit (WCAG 2.1 AA)
+- [x] Sub-workflow node type with YAML definition, double-border rendering, and validation (circular reference detection, nesting depth limits)
+- [x] Sub-workflow drill-in navigation with parent context breadcrumbs and `handleNodeRef` API endpoint
+- [x] Theme system with Light/Dark/System toggle (persisted to localStorage, respects `prefers-color-scheme`)
+- [x] Viewport culling and level-of-detail (nodes outside viewport are hidden; text/ports simplified at low zoom)
+- [x] Full keyboard shortcut map with Tab/Shift+Tab node cycling and `?` help overlay
+- [x] Accessibility: ARIA labels on SVG nodes/edges, screen reader live region announcements, `:focus-visible` outlines, `.sr-only` utility, accessible theme toggle
 
 ## Tech Stack
 

@@ -1,6 +1,12 @@
 // Command dispatcher: sends commands to server, handles undo/redo, keyboard shortcuts
 import { toast } from './toast.js';
 
+// Announce to screen readers via live region
+function announce(message) {
+  const el = document.getElementById('sr-announcements');
+  if (el) { el.textContent = message; }
+}
+
 // Human-readable error messages for common command failures
 const ERROR_LABELS = {
   add_edge: 'Connection failed',
@@ -40,6 +46,19 @@ export class CommandDispatcher {
         toast.warning(`${label}: ${detail}`);
       } else if (result.workflow) {
         window.canvasEngine?.syncCanvas(result.workflow);
+        // Announce successful operations to screen readers
+        const announcements = {
+          add_node: 'Node added',
+          remove_node: 'Node deleted',
+          add_edge: 'Edge created',
+          remove_edge: 'Edge deleted',
+          move_node: 'Node moved',
+          move_nodes: 'Nodes moved',
+          update_attribute: 'Attribute updated',
+          paste_nodes: 'Nodes pasted',
+          rename_node: 'Node renamed',
+        };
+        if (announcements[type]) announce(announcements[type]);
       }
       this._updateButtons(result.canUndo, result.canRedo);
       return result;
