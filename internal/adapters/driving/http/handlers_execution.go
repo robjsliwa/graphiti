@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -61,9 +62,11 @@ func processCallback(w http.ResponseWriter, r *http.Request, execSvc *app.Execut
 		return
 	}
 
-	// Process asynchronously
+	// Process asynchronously — use a detached context since the request context
+	// will be canceled as soon as we write the 202 response.
 	go func() {
-		if err := execSvc.ProcessCallback(r.Context(), cb); err != nil {
+		ctx := context.Background()
+		if err := execSvc.ProcessCallback(ctx, cb); err != nil {
 			slog.Error("execution callback processing failed", "error", err, "runID", cb.RunID)
 			return
 		}
