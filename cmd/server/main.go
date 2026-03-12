@@ -101,10 +101,11 @@ func main() {
 		targetCfg, ok := cfg.Deploy.Targets[cfg.Deploy.DefaultTarget]
 		if ok && targetCfg.WebhookURL != "" {
 			deployTarget := webhook.NewWebhookDeployTarget(webhook.Config{
-				URL:        targetCfg.WebhookURL,
-				HMACSecret: cfg.Deploy.HMACSecret,
-				Timeout:    targetCfg.Timeout,
-				MaxRetries: targetCfg.Retries,
+				URL:           targetCfg.WebhookURL,
+				HMACSecret:    cfg.Deploy.HMACSecret,
+				Timeout:       targetCfg.Timeout,
+				MaxRetries:    targetCfg.Retries,
+				StatusBaseURL: targetCfg.StatusBaseURL,
 			})
 			workflowSvc.SetDeployTarget(deployTarget)
 			slog.Info("deploy target configured", "target", cfg.Deploy.DefaultTarget, "url", targetCfg.WebhookURL)

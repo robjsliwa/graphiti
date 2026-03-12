@@ -55,6 +55,9 @@ templ Dashboard(data DashboardData) {
 							<div class="workflow-card-header">
 								<h3>{ wf.Name }</h3>
 								<span class={ "badge", badgeClass(wf.Status) }>{ string(wf.Status) }</span>
+								if wf.Status == domain.WorkflowStatusDeployed {
+									@partials.DeployVerificationBadge(wf.ID)
+								}
 							</div>
 							<div class="workflow-card-meta">
 								<span>v{ itoa(wf.Version) }</span>

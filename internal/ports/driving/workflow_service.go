@@ -28,4 +28,9 @@ type WorkflowService interface {
 	DeployWorkflow(ctx context.Context, workflowID, target, userID string) (*domain.DeployResult, error)
 	ExportWorkflow(ctx context.Context, workflowID, format string) ([]byte, error)
 	GetVersionHistory(ctx context.Context, workflowID string) ([]*domain.WorkflowVersion, error)
+	// CheckDeployStatus verifies whether a workflow is still deployed on the engine.
+	// Only workflowID is needed; the service resolves the version internally from the
+	// workflow state. The driven port (DeployStatusChecker) also takes version so that
+	// the adapter can include it in the engine request.
+	CheckDeployStatus(ctx context.Context, workflowID string) (*domain.DeployStatusResult, error)
 }

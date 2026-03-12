@@ -1,0 +1,32 @@
+package partials
+
+// DeployVerificationBadge renders a compact inline badge that lazy-loads
+// deploy verification status from the engine. On "missing", it updates the
+// adjacent status badge to "draft" and removes itself (no page reload).
+templ DeployVerificationBadge(workflowID string) {
+	<span
+		class="deploy-verification-badge"
+		hx-get={ "/api/workflows/" + workflowID + "/deploy/status" }
+		hx-trigger="load delay:200ms"
+		hx-swap="none"
+		x-data="{ verification: '' }"
+		@htmx:after-request.camel="
+			try {
+				let data = JSON.parse($event.detail.xhr.responseText);
+				$data.verification = data.verification;
+				if (data.verification === 'missing') {
+					$el.closest('.workflow-card-header').querySelector('.badge').textContent = 'draft';
+					$el.closest('.workflow-card-header').querySelector('.badge').className = 'badge badge-draft';
+					$el.remove();
+				}
+			} catch(e) {}
+		"
+	>
+		<template x-if="verification === 'verified'">
+			<span class="badge badge-success" title="Engine confirms deployment">&#x2713;</span>
+		</template>
+		<template x-if="verification === 'error'">
+			<span class="badge badge-warning" title="Could not reach engine">&#x26A0;</span>
+		</template>
+	</span>
+}

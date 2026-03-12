@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -264,6 +265,166 @@ func TestWebhookDeployTarget_Deploy_ContextCancellation(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected error from context cancellation")
+	}
+}
+
+func TestCheckDeployStatus_Verified(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Errorf("expected GET, got %s", r.Method)
+		}
+		// Path should end with workflow ID
+		if !strings.HasSuffix(r.URL.Path, "/wf-123") {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]any{
+			"deployed":   true,
+			"workflowId": "wf-123",
+			"version":    5,
+		})
+	}))
+	defer server.Close()
+
+	target := NewWebhookDeployTarget(Config{
+		URL:           server.URL + "/deploy",
+		HMACSecret:    "secret",
+		StatusBaseURL: server.URL + "/status/workflows",
+	})
+
+	result, err := target.CheckDeployStatus(context.Background(), "wf-123", 5)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Verification != domain.DeployVerificationVerified {
+		t.Errorf("expected verified, got %s", result.Verification)
+	}
+	if result.Version != 5 {
+		t.Errorf("expected version 5, got %d", result.Version)
+	}
+}
+
+func TestCheckDeployStatus_Missing_404(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]any{"deployed": false})
+	}))
+	defer server.Close()
+
+	target := NewWebhookDeployTarget(Config{
+		URL:           server.URL + "/deploy",
+		HMACSecret:    "secret",
+		StatusBaseURL: server.URL + "/status/workflows",
+	})
+
+	result, err := target.CheckDeployStatus(context.Background(), "wf-123", 3)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Verification != domain.DeployVerificationMissing {
+		t.Errorf("expected missing, got %s", result.Verification)
+	}
+}
+
+func TestCheckDeployStatus_Missing_DeployedFalse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]any{
+			"deployed":   false,
+			"workflowId": "wf-123",
+		})
+	}))
+	defer server.Close()
+
+	target := NewWebhookDeployTarget(Config{
+		URL:           server.URL + "/deploy",
+		HMACSecret:    "secret",
+		StatusBaseURL: server.URL + "/status/workflows",
+	})
+
+	result, err := target.CheckDeployStatus(context.Background(), "wf-123", 3)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Verification != domain.DeployVerificationMissing {
+		t.Errorf("expected missing, got %s", result.Verification)
+	}
+}
+
+func TestCheckDeployStatus_EngineUnreachable(t *testing.T) {
+	target := NewWebhookDeployTarget(Config{
+		URL:           "http://localhost:1/deploy",
+		HMACSecret:    "secret",
+		StatusBaseURL: "http://localhost:1/status/workflows",
+	})
+
+	result, err := target.CheckDeployStatus(context.Background(), "wf-123", 3)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Verification != domain.DeployVerificationError {
+		t.Errorf("expected error, got %s", result.Verification)
+	}
+}
+
+func TestCheckDeployStatus_Disabled(t *testing.T) {
+	target := NewWebhookDeployTarget(Config{
+		URL:           "http://example.com/deploy",
+		HMACSecret:    "secret",
+		StatusBaseURL: "-",
+	})
+
+	result, err := target.CheckDeployStatus(context.Background(), "wf-123", 3)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Verification != domain.DeployVerificationUnknown {
+		t.Errorf("expected unknown, got %s", result.Verification)
+	}
+}
+
+func TestCheckDeployStatus_ServerError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	target := NewWebhookDeployTarget(Config{
+		URL:           server.URL + "/deploy",
+		HMACSecret:    "secret",
+		StatusBaseURL: server.URL + "/status/workflows",
+	})
+
+	result, err := target.CheckDeployStatus(context.Background(), "wf-123", 3)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Verification != domain.DeployVerificationError {
+		t.Errorf("expected error, got %s", result.Verification)
+	}
+}
+
+func TestResolveStatusBaseURL(t *testing.T) {
+	tests := []struct {
+		name      string
+		statusURL string
+		deployURL string
+		want      string
+	}{
+		{"explicit URL", "http://engine:9090/status/workflows", "http://engine:9090/deploy", "http://engine:9090/status/workflows"},
+		{"explicit URL with trailing slash", "http://engine:9090/status/workflows/", "http://engine:9090/deploy", "http://engine:9090/status/workflows"},
+		{"disabled", "-", "http://engine:9090/deploy", ""},
+		{"auto-derive from deploy URL", "", "http://engine:9090/deploy", "http://engine:9090/status/workflows"},
+		{"auto-derive no path", "", "http://engine:9090", "http://engine:9090/status/workflows"},
+		{"empty deploy URL", "", "", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := resolveStatusBaseURL(tt.statusURL, tt.deployURL)
+			if got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
 

@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	neturl "net/url"
+	"strings"
 	"time"
 
 	"graphiti/internal/domain"
@@ -23,6 +25,7 @@ type Config struct {
 	Timeout        time.Duration
 	MaxRetries     int
 	InitialBackoff time.Duration
+	StatusBaseURL  string // Optional URL for status checks; "-" disables; empty auto-derives from URL
 }
 
 // WebhookDeployTarget sends workflow definitions to an HTTP endpoint with HMAC signing.
@@ -32,6 +35,7 @@ type WebhookDeployTarget struct {
 	timeout        time.Duration
 	maxRetries     int
 	initialBackoff time.Duration
+	statusBaseURL  string // resolved status check URL; empty means disabled
 	client         *http.Client
 }
 
@@ -45,12 +49,15 @@ func NewWebhookDeployTarget(cfg Config) *WebhookDeployTarget {
 	if backoff == 0 {
 		backoff = 1 * time.Second
 	}
+	statusURL := resolveStatusBaseURL(cfg.StatusBaseURL, cfg.URL)
+
 	return &WebhookDeployTarget{
 		url:            cfg.URL,
 		hmacSecret:     cfg.HMACSecret,
 		timeout:        timeout,
 		maxRetries:     cfg.MaxRetries,
 		initialBackoff: backoff,
+		statusBaseURL:  statusURL,
 		client:         &http.Client{Timeout: timeout},
 	}
 }
@@ -159,5 +166,138 @@ func (w *WebhookDeployTarget) sign(body []byte) string {
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
+// CheckDeployStatus checks whether a workflow is deployed on the engine.
+func (w *WebhookDeployTarget) CheckDeployStatus(ctx context.Context, workflowID string, version int) (*domain.DeployStatusResult, error) {
+	if w.statusBaseURL == "" {
+		return &domain.DeployStatusResult{
+			WorkflowID:   workflowID,
+			Version:      version,
+			Verification: domain.DeployVerificationUnknown,
+			Message:      "status checking not configured",
+			CheckedAt:    time.Now(),
+		}, nil
+	}
+
+	statusCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	statusURL, err := neturl.JoinPath(w.statusBaseURL, workflowID)
+	if err != nil {
+		return &domain.DeployStatusResult{
+			WorkflowID:   workflowID,
+			Version:      version,
+			Verification: domain.DeployVerificationError,
+			Message:      "invalid status URL",
+			CheckedAt:    time.Now(),
+		}, nil
+	}
+
+	req, err := http.NewRequestWithContext(statusCtx, "GET", statusURL, nil)
+	if err != nil {
+		return &domain.DeployStatusResult{
+			WorkflowID:   workflowID,
+			Version:      version,
+			Verification: domain.DeployVerificationError,
+			Message:      "failed to create request",
+			CheckedAt:    time.Now(),
+		}, nil
+	}
+
+	// HMAC-sign the request URL as body
+	sig := w.sign([]byte(workflowID))
+	req.Header.Set("X-Graphiti-Signature", "sha256="+sig)
+
+	resp, err := w.client.Do(req)
+	if err != nil {
+		return &domain.DeployStatusResult{
+			WorkflowID:   workflowID,
+			Version:      version,
+			Verification: domain.DeployVerificationError,
+			Message:      "engine unreachable",
+			CheckedAt:    time.Now(),
+		}, nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return &domain.DeployStatusResult{
+			WorkflowID:   workflowID,
+			Version:      version,
+			Verification: domain.DeployVerificationMissing,
+			Message:      "workflow not found on engine",
+			CheckedAt:    time.Now(),
+		}, nil
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return &domain.DeployStatusResult{
+			WorkflowID:   workflowID,
+			Version:      version,
+			Verification: domain.DeployVerificationError,
+			Message:      fmt.Sprintf("unexpected status %d from engine", resp.StatusCode),
+			CheckedAt:    time.Now(),
+		}, nil
+	}
+
+	var statusResp struct {
+		Deployed   bool   `json:"deployed"`
+		WorkflowID string `json:"workflowId"`
+		Version    int    `json:"version"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&statusResp); err != nil {
+		return &domain.DeployStatusResult{
+			WorkflowID:   workflowID,
+			Version:      version,
+			Verification: domain.DeployVerificationError,
+			Message:      "invalid response from engine",
+			CheckedAt:    time.Now(),
+		}, nil
+	}
+
+	if !statusResp.Deployed {
+		return &domain.DeployStatusResult{
+			WorkflowID:   workflowID,
+			Version:      version,
+			Verification: domain.DeployVerificationMissing,
+			Message:      "engine reports workflow not deployed",
+			CheckedAt:    time.Now(),
+		}, nil
+	}
+
+	return &domain.DeployStatusResult{
+		WorkflowID:   workflowID,
+		Version:      statusResp.Version,
+		Verification: domain.DeployVerificationVerified,
+		Message:      "engine confirms deployment",
+		CheckedAt:    time.Now(),
+	}, nil
+}
+
+// resolveStatusBaseURL determines the status check URL from config.
+// "-" disables status checks; empty derives from the deploy URL.
+func resolveStatusBaseURL(statusBaseURL, deployURL string) string {
+	if statusBaseURL == "-" {
+		return ""
+	}
+	if statusBaseURL != "" {
+		return strings.TrimRight(statusBaseURL, "/")
+	}
+	// Auto-derive: replace the deploy URL's path with /status/workflows
+	if deployURL == "" {
+		return ""
+	}
+	u, err := neturl.Parse(deployURL)
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	u.Path = "/status/workflows"
+	u.RawQuery = ""
+	u.Fragment = ""
+	return u.String()
+}
+
 // Ensure WebhookDeployTarget implements driven.DeployTarget.
 var _ driven.DeployTarget = (*WebhookDeployTarget)(nil)
+
+// Ensure WebhookDeployTarget implements driven.DeployStatusChecker.
+var _ driven.DeployStatusChecker = (*WebhookDeployTarget)(nil)

@@ -22,10 +22,12 @@ deploy:
   targets:
     production:
       webhookURL: "${DEPLOY_WEBHOOK_PROD}"
+      statusBaseURL: "${DEPLOY_STATUS_URL_PROD}"  # Optional; empty auto-derives, "-" disables
       timeout: 30s
       retries: 3
     staging:
       webhookURL: "${DEPLOY_WEBHOOK_STAGING}"
+      statusBaseURL: "${DEPLOY_STATUS_URL_STAGING}"
       timeout: 30s
       retries: 3
 

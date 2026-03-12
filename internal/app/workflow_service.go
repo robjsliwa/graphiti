@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -334,6 +335,65 @@ func (s *WorkflowService) ExportWorkflow(ctx context.Context, workflowID, format
 // GetVersionHistory returns all version snapshots for a workflow.
 func (s *WorkflowService) GetVersionHistory(ctx context.Context, workflowID string) ([]*domain.WorkflowVersion, error) {
 	return s.repo.GetVersionHistory(ctx, workflowID)
+}
+
+// CheckDeployStatus verifies whether a workflow is still deployed on the engine.
+// It uses getOrLoadSession to ensure a single source of truth for the workflow state,
+// avoiding split-brain between the repo copy and the in-memory session.
+func (s *WorkflowService) CheckDeployStatus(ctx context.Context, workflowID string) (*domain.DeployStatusResult, error) {
+	session, err := s.getOrLoadSession(ctx, workflowID)
+	if err != nil {
+		return nil, err
+	}
+
+	wf := session.workflow
+
+	unknown := &domain.DeployStatusResult{
+		WorkflowID:   workflowID,
+		Version:      wf.Version,
+		Verification: domain.DeployVerificationUnknown,
+		Message:      "status checking not available",
+		CheckedAt:    time.Now(),
+	}
+
+	if wf.Status != domain.WorkflowStatusDeployed {
+		return unknown, nil
+	}
+
+	if s.deployTarget == nil {
+		return unknown, nil
+	}
+
+	checker, ok := s.deployTarget.(driven.DeployStatusChecker)
+	if !ok {
+		return unknown, nil
+	}
+
+	result, err := checker.CheckDeployStatus(ctx, workflowID, wf.Version)
+	if err != nil {
+		return &domain.DeployStatusResult{
+			WorkflowID:   workflowID,
+			Version:      wf.Version,
+			Verification: domain.DeployVerificationError,
+			Message:      "status check failed",
+			CheckedAt:    time.Now(),
+		}, nil
+	}
+
+	// Reconcile: if engine says missing, revert workflow to draft
+	if result.Verification == domain.DeployVerificationMissing {
+		now := time.Now()
+		s.mu.Lock()
+		wf.Status = domain.WorkflowStatusDraft
+		wf.UpdatedAt = now
+		s.mu.Unlock()
+
+		if err := s.repo.Update(ctx, wf); err != nil {
+			slog.Error("failed to reconcile workflow status", "error", err, "workflowID", workflowID)
+		}
+	}
+
+	return result, nil
 }
 
 // exportData is the structure for workflow export.

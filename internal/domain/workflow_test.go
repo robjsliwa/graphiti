@@ -356,6 +356,34 @@ func TestWorkflow_Validate_CycleDetection(t *testing.T) {
 	}
 }
 
+// Compile-time check: all DeployVerification constants must be distinct.
+// If two constants have the same value, this map literal will fail to compile.
+var _ = map[DeployVerification]struct{}{
+	DeployVerificationUnknown:  {},
+	DeployVerificationVerified: {},
+	DeployVerificationMissing:  {},
+	DeployVerificationError:    {},
+}
+
+func TestDeployVerification_StringValues(t *testing.T) {
+	// Verify the string representation matches the expected wire format,
+	// since these values are serialized to JSON for the API.
+	tests := []struct {
+		v    DeployVerification
+		want string
+	}{
+		{DeployVerificationUnknown, "unknown"},
+		{DeployVerificationVerified, "verified"},
+		{DeployVerificationMissing, "missing"},
+		{DeployVerificationError, "error"},
+	}
+	for _, tt := range tests {
+		if string(tt.v) != tt.want {
+			t.Errorf("DeployVerification %q serializes as %q, want %q", tt.v, string(tt.v), tt.want)
+		}
+	}
+}
+
 func errorContains(err, target error) bool {
 	if err == nil {
 		return false

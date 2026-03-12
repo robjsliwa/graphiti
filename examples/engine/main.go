@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/hmac"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -65,6 +66,9 @@ func main() {
 		})
 	})
 
+	// Deploy status endpoint - Graphiti checks if a workflow is still deployed
+	mux.HandleFunc("GET /status/workflows/{id}", handleWorkflowStatus(runner))
+
 	// Catch-all for workflow API routes
 	mux.HandleFunc("/api/", handleWorkflowRequest(runner))
 
@@ -77,6 +81,7 @@ func main() {
 
 	fmt.Printf("\n  Graphiti Sample Engine running on :%s\n", port)
 	fmt.Printf("  Deploy endpoint:  POST http://localhost:%s/deploy\n", port)
+	fmt.Printf("  Status endpoint:  GET  http://localhost:%s/status/workflows/{id}\n", port)
 	fmt.Printf("  Health check:     GET  http://localhost:%s/health\n", port)
 	fmt.Printf("  Callback URL:     %s\n\n", callbackURL)
 
@@ -103,7 +108,7 @@ func handleDeploy(runner *Runner, hmacSecret string) http.HandlerFunc {
 				return
 			}
 			expectedSig := computeHMAC(body, hmacSecret)
-			if !strings.HasPrefix(sig, "sha256=") || sig[7:] != expectedSig {
+			if !strings.HasPrefix(sig, "sha256=") || !hmac.Equal([]byte(sig[7:]), []byte(expectedSig)) {
 				http.Error(w, "invalid signature", http.StatusUnauthorized)
 				return
 			}
@@ -133,6 +138,49 @@ func handleDeploy(runner *Runner, hmacSecret string) http.HandlerFunc {
 			"name", payload.Workflow.Name,
 			"version", payload.Workflow.Version,
 		)
+	}
+}
+
+// handleWorkflowStatus returns the deployment status of a specific workflow.
+// HMAC signature is verified if the engine has a secret configured.
+func handleWorkflowStatus(runner *Runner) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		workflowID := r.PathValue("id")
+
+		// Verify HMAC signature if configured
+		if runner.hmacSecret != "" {
+			sig := r.Header.Get("X-Graphiti-Signature")
+			if sig == "" {
+				http.Error(w, "missing signature", http.StatusUnauthorized)
+				return
+			}
+			expectedSig := computeHMAC([]byte(workflowID), runner.hmacSecret)
+			if !strings.HasPrefix(sig, "sha256=") || !hmac.Equal([]byte(sig[7:]), []byte(expectedSig)) {
+				http.Error(w, "invalid signature", http.StatusUnauthorized)
+				return
+			}
+		}
+
+		runner.mu.RLock()
+		deployed, ok := runner.workflows[workflowID]
+		runner.mu.RUnlock()
+
+		w.Header().Set("Content-Type", "application/json")
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]any{
+				"deployed":   false,
+				"workflowId": workflowID,
+			})
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]any{
+			"deployed":   true,
+			"workflowId": workflowID,
+			"version":    deployed.Payload.Workflow.Version,
+		})
 	}
 }
 

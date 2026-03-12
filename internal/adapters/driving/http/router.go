@@ -72,6 +72,7 @@ func NewRouter(deps RouterDeps) http.Handler {
 
 	// Deploy and export
 	protected.HandleFunc("POST /api/workflows/{id}/deploy", handleDeploy(deps.WorkflowSvc))
+	protected.HandleFunc("GET /api/workflows/{id}/deploy/status", handleCheckDeployStatus(deps.WorkflowSvc))
 	protected.HandleFunc("GET /api/workflows/{id}/export", handleExport(deps.WorkflowSvc))
 	protected.HandleFunc("GET /api/workflows/{id}/versions", handleVersionHistory(deps.WorkflowSvc))
 

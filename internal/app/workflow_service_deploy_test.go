@@ -178,6 +178,119 @@ func TestWorkflowService_GetVersionHistory(t *testing.T) {
 	}
 }
 
+func TestWorkflowService_CheckDeployStatus_NotDeployed(t *testing.T) {
+	svc, _ := setupWorkflowService()
+	ctx := context.Background()
+	wf, _ := svc.CreateWorkflow(ctx, "Draft WF", "", "user-1")
+
+	result, err := svc.CheckDeployStatus(ctx, wf.ID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Verification != domain.DeployVerificationUnknown {
+		t.Errorf("expected unknown for non-deployed, got %s", result.Verification)
+	}
+}
+
+func TestWorkflowService_CheckDeployStatus_NoTarget(t *testing.T) {
+	svc, _ := setupWorkflowService()
+	ctx := context.Background()
+	wf, _ := svc.CreateWorkflow(ctx, "No Target", "", "user-1")
+
+	// Deploy with a fake target, then remove it
+	fake := &fakeDeployTarget{success: true}
+	svc.SetDeployTarget(fake)
+	svc.DeployWorkflow(ctx, wf.ID, "prod", "user-1")
+	svc.SetDeployTarget(nil)
+
+	result, err := svc.CheckDeployStatus(ctx, wf.ID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Verification != domain.DeployVerificationUnknown {
+		t.Errorf("expected unknown when no target, got %s", result.Verification)
+	}
+}
+
+func TestWorkflowService_CheckDeployStatus_NoChecker(t *testing.T) {
+	svc, _ := setupWorkflowService()
+	ctx := context.Background()
+	wf, _ := svc.CreateWorkflow(ctx, "No Checker", "", "user-1")
+
+	// fakeDeployTarget does NOT implement DeployStatusChecker
+	fake := &fakeDeployTarget{success: true}
+	svc.SetDeployTarget(fake)
+	svc.DeployWorkflow(ctx, wf.ID, "prod", "user-1")
+
+	result, err := svc.CheckDeployStatus(ctx, wf.ID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Verification != domain.DeployVerificationUnknown {
+		t.Errorf("expected unknown when no checker, got %s", result.Verification)
+	}
+}
+
+func TestWorkflowService_CheckDeployStatus_Verified(t *testing.T) {
+	svc, _ := setupWorkflowService()
+	ctx := context.Background()
+	wf, _ := svc.CreateWorkflow(ctx, "Verified", "", "user-1")
+
+	fake := &fakeDeployTargetWithChecker{
+		fakeDeployTarget: fakeDeployTarget{success: true},
+		statusResult: &domain.DeployStatusResult{
+			Verification: domain.DeployVerificationVerified,
+			Message:      "confirmed",
+		},
+	}
+	svc.SetDeployTarget(fake)
+	svc.DeployWorkflow(ctx, wf.ID, "prod", "user-1")
+
+	result, err := svc.CheckDeployStatus(ctx, wf.ID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Verification != domain.DeployVerificationVerified {
+		t.Errorf("expected verified, got %s", result.Verification)
+	}
+}
+
+func TestWorkflowService_CheckDeployStatus_Missing_Reconciles(t *testing.T) {
+	svc, _ := setupWorkflowService()
+	ctx := context.Background()
+	wf, _ := svc.CreateWorkflow(ctx, "Missing", "", "user-1")
+
+	fake := &fakeDeployTargetWithChecker{
+		fakeDeployTarget: fakeDeployTarget{success: true},
+		statusResult: &domain.DeployStatusResult{
+			Verification: domain.DeployVerificationMissing,
+			Message:      "not found on engine",
+		},
+	}
+	svc.SetDeployTarget(fake)
+	svc.DeployWorkflow(ctx, wf.ID, "prod", "user-1")
+
+	// Verify it's deployed
+	deployed, _ := svc.GetWorkflow(ctx, wf.ID)
+	if deployed.Status != domain.WorkflowStatusDeployed {
+		t.Fatalf("expected deployed, got %s", deployed.Status)
+	}
+
+	result, err := svc.CheckDeployStatus(ctx, wf.ID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Verification != domain.DeployVerificationMissing {
+		t.Errorf("expected missing, got %s", result.Verification)
+	}
+
+	// Verify reconciliation: status should now be draft
+	updated, _ := svc.GetWorkflow(ctx, wf.ID)
+	if updated.Status != domain.WorkflowStatusDraft {
+		t.Errorf("expected draft after reconciliation, got %s", updated.Status)
+	}
+}
+
 // fakeDeployTarget is a test double for the deploy target port.
 type fakeDeployTarget struct {
 	success bool
@@ -188,6 +301,19 @@ type fakeDeployTarget struct {
 func (f *fakeDeployTarget) Deploy(_ context.Context, _ domain.DeployPayload) (*domain.DeployResult, error) {
 	f.called = true
 	return &domain.DeployResult{Success: f.success, RunID: f.runID, Message: "ok"}, nil
+}
+
+// fakeDeployTargetWithChecker implements both DeployTarget and DeployStatusChecker.
+type fakeDeployTargetWithChecker struct {
+	fakeDeployTarget
+	statusResult *domain.DeployStatusResult
+}
+
+func (f *fakeDeployTargetWithChecker) CheckDeployStatus(_ context.Context, workflowID string, version int) (*domain.DeployStatusResult, error) {
+	result := *f.statusResult
+	result.WorkflowID = workflowID
+	result.Version = version
+	return &result, nil
 }
 
 // testAddNodeCmdWithDef adds a node with a specific definition.

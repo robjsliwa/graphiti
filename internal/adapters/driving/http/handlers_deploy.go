@@ -2,10 +2,14 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
+	"time"
 
+	"graphiti/internal/domain"
 	"graphiti/internal/ports/driving"
 )
 
@@ -108,6 +112,49 @@ func handleExport(svc driving.WorkflowService) http.HandlerFunc {
 		w.Header().Set("Content-Type", contentType)
 		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="workflow.%s"`, ext))
 		w.Write(data)
+	}
+}
+
+type deployStatusResponse struct {
+	WorkflowID   string `json:"workflowId"`
+	Version      int    `json:"version"`
+	Verification string `json:"verification"`
+	Message      string `json:"message,omitempty"`
+	CheckedAt    string `json:"checkedAt"`
+}
+
+func handleCheckDeployStatus(svc driving.WorkflowService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		workflowID := r.PathValue("id")
+
+		result, err := svc.CheckDeployStatus(r.Context(), workflowID)
+		if err != nil {
+			if errors.Is(err, domain.ErrNotFound) || strings.Contains(err.Error(), "not found") {
+				writeJSON(w, http.StatusNotFound, deployStatusResponse{
+					WorkflowID:   workflowID,
+					Verification: "error",
+					Message:      "workflow not found",
+					CheckedAt:    time.Now().Format("2006-01-02T15:04:05Z"),
+				})
+				return
+			}
+			slog.Error("deploy status check failed", "error", err, "workflowId", workflowID)
+			writeJSON(w, http.StatusInternalServerError, deployStatusResponse{
+				WorkflowID:   workflowID,
+				Verification: "error",
+				Message:      "status check failed",
+				CheckedAt:    time.Now().Format("2006-01-02T15:04:05Z"),
+			})
+			return
+		}
+
+		writeJSON(w, http.StatusOK, deployStatusResponse{
+			WorkflowID:   result.WorkflowID,
+			Version:      result.Version,
+			Verification: string(result.Verification),
+			Message:      result.Message,
+			CheckedAt:    result.CheckedAt.Format("2006-01-02T15:04:05Z"),
+		})
 	}
 }
 

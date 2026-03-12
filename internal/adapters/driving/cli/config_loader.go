@@ -82,9 +82,10 @@ type DeployConfig struct {
 
 // TargetConfig holds per-target deploy settings.
 type TargetConfig struct {
-	WebhookURL string        `yaml:"webhookURL"`
-	Timeout    time.Duration `yaml:"timeout"`
-	Retries    int           `yaml:"retries"`
+	WebhookURL    string        `yaml:"webhookURL"`
+	StatusBaseURL string        `yaml:"statusBaseURL"` // Optional; empty auto-derives, "-" disables
+	Timeout       time.Duration `yaml:"timeout"`
+	Retries       int           `yaml:"retries"`
 }
 
 // CommandHistoryConfig holds undo/redo settings.

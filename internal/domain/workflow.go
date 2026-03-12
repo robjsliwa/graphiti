@@ -89,6 +89,25 @@ type DeployResult struct {
 	ValidationErrors []ValidationError
 }
 
+// DeployVerification represents the status of a deployment verification check.
+type DeployVerification string
+
+const (
+	DeployVerificationUnknown  DeployVerification = "unknown"  // Engine doesn't support status checks
+	DeployVerificationVerified DeployVerification = "verified" // Engine confirms workflow is deployed
+	DeployVerificationMissing  DeployVerification = "missing"  // Engine says workflow is NOT deployed
+	DeployVerificationError    DeployVerification = "error"    // Could not reach engine
+)
+
+// DeployStatusResult is the outcome of a deploy status check.
+type DeployStatusResult struct {
+	WorkflowID   string
+	Version      int
+	Verification DeployVerification
+	Message      string
+	CheckedAt    time.Time
+}
+
 var (
 	ErrNodeNotFound      = errors.New("node not found")
 	ErrEdgeNotFound      = errors.New("edge not found")

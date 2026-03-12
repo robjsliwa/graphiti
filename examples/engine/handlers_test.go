@@ -156,6 +156,52 @@ func TestHealthEndpoint(t *testing.T) {
 	}
 }
 
+func TestHandleWorkflowStatus_Deployed(t *testing.T) {
+	runner := NewRunner(nil, "", "")
+	runner.Deploy(makeTestPayload())
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /status/workflows/{id}", handleWorkflowStatus(runner))
+
+	req := httptest.NewRequest("GET", "/status/workflows/wf-test", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d; body = %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var resp map[string]any
+	json.Unmarshal(rec.Body.Bytes(), &resp)
+	if resp["deployed"] != true {
+		t.Errorf("deployed = %v, want true", resp["deployed"])
+	}
+	if resp["workflowId"] != "wf-test" {
+		t.Errorf("workflowId = %v, want wf-test", resp["workflowId"])
+	}
+}
+
+func TestHandleWorkflowStatus_NotFound(t *testing.T) {
+	runner := NewRunner(nil, "", "")
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /status/workflows/{id}", handleWorkflowStatus(runner))
+
+	req := httptest.NewRequest("GET", "/status/workflows/nonexistent", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+
+	var resp map[string]any
+	json.Unmarshal(rec.Body.Bytes(), &resp)
+	if resp["deployed"] != false {
+		t.Errorf("deployed = %v, want false", resp["deployed"])
+	}
+}
+
 func TestEndToEndSimpleWorkflow(t *testing.T) {
 	// Deploy a simple API Gateway -> HTTP Response workflow
 	runner := NewRunner(nil, "", "")

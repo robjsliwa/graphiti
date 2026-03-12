@@ -182,6 +182,82 @@ func TestHandleVersionHistory(t *testing.T) {
 	}
 }
 
+func TestHandleCheckDeployStatus_Unknown(t *testing.T) {
+	svc, _, wfID := setupDeployTestService(t)
+	handler := handleCheckDeployStatus(svc)
+
+	req := httptest.NewRequest("GET", "/api/workflows/"+wfID+"/deploy/status", nil)
+	req.SetPathValue("id", wfID)
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp deployStatusResponse
+	json.NewDecoder(w.Body).Decode(&resp)
+	if resp.Verification != "unknown" {
+		t.Errorf("expected unknown verification, got %q", resp.Verification)
+	}
+	if resp.WorkflowID != wfID {
+		t.Errorf("expected workflowId %q, got %q", wfID, resp.WorkflowID)
+	}
+}
+
+func TestHandleCheckDeployStatus_Verified(t *testing.T) {
+	svc, _, wfID := setupDeployTestService(t)
+
+	fakeTarget := &fakeDeployTargetWithCheckerHTTP{
+		fakeDeployTargetHTTP: fakeDeployTargetHTTP{success: true},
+		statusResult: &domain.DeployStatusResult{
+			Verification: domain.DeployVerificationVerified,
+			Message:      "confirmed",
+		},
+	}
+	svc.SetDeployTarget(fakeTarget)
+
+	// Deploy first
+	body, _ := json.Marshal(map[string]string{"target": "production"})
+	deployReq := httptest.NewRequest("POST", "/api/workflows/"+wfID+"/deploy", bytes.NewReader(body))
+	deployReq.Header.Set("Content-Type", "application/json")
+	deployReq.SetPathValue("id", wfID)
+	dw := httptest.NewRecorder()
+	handleDeploy(svc).ServeHTTP(dw, deployReq)
+
+	// Check status
+	handler := handleCheckDeployStatus(svc)
+	req := httptest.NewRequest("GET", "/api/workflows/"+wfID+"/deploy/status", nil)
+	req.SetPathValue("id", wfID)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp deployStatusResponse
+	json.NewDecoder(w.Body).Decode(&resp)
+	if resp.Verification != "verified" {
+		t.Errorf("expected verified, got %q", resp.Verification)
+	}
+}
+
+func TestHandleCheckDeployStatus_NotFound(t *testing.T) {
+	svc, _, _ := setupDeployTestService(t)
+	handler := handleCheckDeployStatus(svc)
+
+	req := httptest.NewRequest("GET", "/api/workflows/nonexistent/deploy/status", nil)
+	req.SetPathValue("id", "nonexistent")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404 for nonexistent workflow, got %d", w.Code)
+	}
+}
+
 type fakeDeployTargetHTTP struct {
 	success bool
 	runID   string
@@ -189,4 +265,16 @@ type fakeDeployTargetHTTP struct {
 
 func (f *fakeDeployTargetHTTP) Deploy(_ context.Context, _ domain.DeployPayload) (*domain.DeployResult, error) {
 	return &domain.DeployResult{Success: f.success, RunID: f.runID, Message: "ok"}, nil
+}
+
+type fakeDeployTargetWithCheckerHTTP struct {
+	fakeDeployTargetHTTP
+	statusResult *domain.DeployStatusResult
+}
+
+func (f *fakeDeployTargetWithCheckerHTTP) CheckDeployStatus(_ context.Context, workflowID string, version int) (*domain.DeployStatusResult, error) {
+	result := *f.statusResult
+	result.WorkflowID = workflowID
+	result.Version = version
+	return &result, nil
 }
