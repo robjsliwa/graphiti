@@ -30,6 +30,17 @@ export class SelectionManager {
       this._openSubWorkflow(node.dataset.nodeId);
     });
 
+    svg.addEventListener('contextmenu', (e) => {
+      const edge = e.target.closest('.edge');
+      if (!edge) return;
+      e.preventDefault();
+      this.clearSelection();
+      this._selectEdge(edge.dataset.edgeId);
+      document.dispatchEvent(new CustomEvent('canvas:contextmenu', {
+        detail: { edgeId: edge.dataset.edgeId, x: e.clientX, y: e.clientY }
+      }));
+    });
+
     svg.addEventListener('mousedown', (e) => {
       if (e.target.closest('.port')) return; // ports are for ConnectManager
       if (e.button !== 0 || e.getModifierState('Space')) return;

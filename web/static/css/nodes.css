@@ -32,13 +32,19 @@
 .port-label-input { text-anchor: start; }
 .port-label-output { text-anchor: end; }
 
-.edge {
-  pointer-events: stroke;
-  cursor: pointer;
-  transition: stroke 0.15s, stroke-width 0.15s;
+.edge { cursor: pointer; }
+.edge-hit { pointer-events: stroke; fill: none; }
+.edge-line { pointer-events: none; transition: stroke 0.15s, stroke-width 0.15s; }
+.edge:hover .edge-line { stroke: var(--accent); stroke-width: 3; }
+.edge.selected .edge-line {
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-dasharray: 8 4;
+  animation: edge-march 0.5s linear infinite;
 }
-.edge:hover { stroke: var(--accent); stroke-width: 3; }
-.edge.selected { stroke: var(--accent); stroke-width: 3; }
+@keyframes edge-march {
+  to { stroke-dashoffset: -12; }
+}
 
 .port-valid-target {
   stroke: var(--success) !important;
@@ -84,6 +90,32 @@
 }
 
 /* Execution mode: disable canvas interactions */
+/* Context menu */
+.context-menu {
+  position: fixed;
+  z-index: 1000;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  min-width: 160px;
+}
+.context-menu-item {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.context-menu-item:hover {
+  background: var(--surface-2);
+}
+
 .execution-mode .node { cursor: default; pointer-events: none; }
 .execution-mode .port { cursor: default; pointer-events: none; }
 .execution-mode .edge { cursor: default; }

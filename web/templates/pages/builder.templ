@@ -120,6 +120,13 @@ templ Builder(data BuilderData) {
 			</aside>
 			<main class="canvas-container" id="canvas-container">
 				@svg.Canvas(data.Workflow)
+				<div x-data="canvasContextMenu" x-show="open" x-cloak
+					class="context-menu"
+					:style="'left:' + x + 'px; top:' + y + 'px'"
+					@click.outside="open = false"
+					@keydown.escape.window="open = false">
+					<button class="context-menu-item" @click="deleteEdge()">Delete connection</button>
+				</div>
 				<div class="canvas-hud">
 					<div class="zoom-controls">
 						<button class="btn btn-icon" id="zoom-out" title="Zoom out">-</button>

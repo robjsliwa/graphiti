@@ -193,7 +193,8 @@ export class CanvasEngine {
       if (!el) {
         this.edgeLayer.appendChild(this._createEdgeSVG(edge, state.nodes));
       } else {
-        el.setAttribute('d', this._calcEdgePath(edge, state.nodes));
+        const newD = this._calcEdgePath(edge, state.nodes);
+        el.querySelectorAll('path').forEach(p => p.setAttribute('d', newD));
       }
     }
   }
@@ -217,7 +218,8 @@ export class CanvasEngine {
       const tgtPortY = this._domPortY(tgtEl, el.dataset.targetPort || el.getAttribute('data-target-port'));
       const x1 = sp.x + sw, y1 = sp.y + srcPortY, x2 = tp.x, y2 = tp.y + tgtPortY;
       const cp = Math.max(50, (x2 - x1) * 0.5);
-      el.setAttribute('d', `M ${x1} ${y1} C ${x1+cp} ${y1}, ${x2-cp} ${y2}, ${x2} ${y2}`);
+      const d = `M ${x1} ${y1} C ${x1+cp} ${y1}, ${x2-cp} ${y2}, ${x2} ${y2}`;
+      el.querySelectorAll('path').forEach(p => p.setAttribute('d', d));
     });
   }
 
@@ -356,19 +358,32 @@ export class CanvasEngine {
 
   _createEdgeSVG(edge, nodes) {
     const ns = 'http://www.w3.org/2000/svg';
-    const path = document.createElementNS(ns, 'path');
-    path.setAttribute('class', 'edge');
-    path.dataset.edgeId = edge.id;
-    path.dataset.sourceNode = edge.sourceNodeId;
-    path.dataset.targetNode = edge.targetNodeId;
-    path.dataset.sourcePort = edge.sourcePortId;
-    path.dataset.targetPort = edge.targetPortId;
-    path.setAttribute('d', this._calcEdgePath(edge, nodes));
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', 'var(--edge-color, #94a3b8)');
-    path.setAttribute('stroke-width', '2');
-    path.setAttribute('marker-end', 'url(#arrowhead)');
-    return path;
+    const g = document.createElementNS(ns, 'g');
+    g.setAttribute('class', 'edge');
+    g.dataset.edgeId = edge.id;
+    g.dataset.sourceNode = edge.sourceNodeId;
+    g.dataset.targetNode = edge.targetNodeId;
+    g.dataset.sourcePort = edge.sourcePortId;
+    g.dataset.targetPort = edge.targetPortId;
+    const d = this._calcEdgePath(edge, nodes);
+    const hit = document.createElementNS(ns, 'path');
+    hit.setAttribute('class', 'edge-hit');
+    hit.setAttribute('d', d);
+    hit.setAttribute('fill', 'none');
+    hit.setAttribute('stroke', 'transparent');
+    hit.setAttribute('stroke-width', '16');
+    hit.setAttribute('pointer-events', 'stroke');
+    const line = document.createElementNS(ns, 'path');
+    line.setAttribute('class', 'edge-line');
+    line.setAttribute('d', d);
+    line.setAttribute('fill', 'none');
+    line.setAttribute('stroke', 'var(--edge-color, #94a3b8)');
+    line.setAttribute('stroke-width', '2');
+    line.setAttribute('marker-end', 'url(#arrowhead)');
+    line.setAttribute('pointer-events', 'none');
+    g.appendChild(hit);
+    g.appendChild(line);
+    return g;
   }
 
   _findPortY(node, portId, isOutput) {

@@ -144,8 +144,8 @@ document.addEventListener('alpine:init', () => {
       nodeEl.classList.toggle('node-pulsing', msg.status === 'running');
 
       if (msg.status === 'completed') {
-        document.querySelectorAll(`.edge[data-source-node="${msg.nodeID}"]`).forEach(edge => {
-          edge.style.stroke = 'var(--success)';
+        document.querySelectorAll(`.edge[data-source-node="${msg.nodeID}"] .edge-line`).forEach(line => {
+          line.style.stroke = 'var(--success)';
         });
       }
 
@@ -181,7 +181,36 @@ document.addEventListener('alpine:init', () => {
       });
       document.querySelectorAll('.node-pulsing').forEach(n => n.classList.remove('node-pulsing'));
       document.querySelectorAll('.exec-duration').forEach(b => b.remove());
-      document.querySelectorAll('.edge').forEach(e => e.style.stroke = '');
+      document.querySelectorAll('.edge-line').forEach(e => e.style.stroke = '');
+    },
+  }));
+
+  // Canvas context menu for edge actions
+  Alpine.data('canvasContextMenu', () => ({
+    open: false,
+    x: 0,
+    y: 0,
+    edgeId: null,
+
+    init() {
+      this._handler = (e) => {
+        this.edgeId = e.detail.edgeId;
+        this.x = e.detail.x;
+        this.y = e.detail.y;
+        this.open = true;
+      };
+      document.addEventListener('canvas:contextmenu', this._handler);
+    },
+
+    destroy() {
+      document.removeEventListener('canvas:contextmenu', this._handler);
+    },
+
+    deleteEdge() {
+      if (this.edgeId && window.commandDispatcher) {
+        window.commandDispatcher.dispatch('remove_edge', { edgeId: this.edgeId });
+      }
+      this.open = false;
     },
   }));
 

@@ -139,21 +139,38 @@ templ Port(node *domain.NodeInstance, port domain.PortDefinition, isInput bool, 
 }
 
 templ Edge(wf *domain.Workflow, edge domain.Edge) {
-	<path
+	@edgeGroup(edge, edgePath(wf, edge), edgeAriaLabel(wf, edge))
+}
+
+templ edgeGroup(edge domain.Edge, path string, ariaLabel string) {
+	<g
 		class="edge"
 		data-edge-id={ edge.ID }
 		data-source-node={ edge.SourceNodeID }
 		data-target-node={ edge.TargetNodeID }
 		data-source-port={ edge.SourcePortID }
 		data-target-port={ edge.TargetPortID }
-		d={ edgePath(wf, edge) }
-		fill="none"
-		stroke="var(--edge-color, #94a3b8)"
-		stroke-width="2"
-		marker-end="url(#arrowhead)"
 		role="img"
-		aria-label={ edgeAriaLabel(wf, edge) }
-	/>
+		aria-label={ ariaLabel }
+	>
+		<path
+			class="edge-hit"
+			d={ path }
+			fill="none"
+			stroke="transparent"
+			stroke-width="16"
+			pointer-events="stroke"
+		/>
+		<path
+			class="edge-line"
+			d={ path }
+			fill="none"
+			stroke="var(--edge-color, #94a3b8)"
+			stroke-width="2"
+			marker-end="url(#arrowhead)"
+			pointer-events="none"
+		/>
+	</g>
 }
 
 templ nodeShape(node *domain.NodeInstance) {
