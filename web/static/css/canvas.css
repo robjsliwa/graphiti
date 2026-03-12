@@ -10,6 +10,7 @@
   height: 100%;
   display: block;
   cursor: grab;
+  user-select: none;
 }
 .workflow-canvas.panning {
   cursor: grabbing;

@@ -31,6 +31,7 @@ export class ConnectManager {
       this.startX = nPos.x + parseFloat(port.getAttribute('cx'));
       this.startY = nPos.y + parseFloat(port.getAttribute('cy'));
       this._createPreview();
+      e.preventDefault();
       e.stopPropagation();
     });
 
