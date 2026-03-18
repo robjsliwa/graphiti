@@ -4775,40 +4775,841 @@ Complete list of all validation codes across all stories:
 
 Open a workflow. Add two disconnected groups of nodes, don't wire them together. Click Deploy. A toast appears: "Deployment blocked: 3 errors found." The disconnected nodes have red dashed borders. Click an error in the list, the canvas pans to that node. Now wire them together, click Deploy again, errors clear. Add an edge from a data port to a control port. The port flashes red during the drag. Force it through validation: `PORT_TYPE_MISMATCH` appears. Delete the bad edge. Leave a required attribute empty. Deploy: `ATTR_REQUIRED_MISSING`. Fill it with garbage JSON where JSON is expected: `ATTR_JSON_INVALID`. Fix everything. Deploy succeeds, green flash, webhook fires. The validation framework caught everything the user got wrong and explained each problem in plain language.
 
-## Testing Strategy Summary
 
-Testing isn't a phase, it's continuous. But here's the expected coverage at each layer:
+## Phase 7: Graphiti as an Embeddable Go Library
+
+**Goal:** Refactor Graphiti so it can run in two modes: as a standalone service (the existing behavior) or as a Go library embedded directly into another application's process. The standalone service becomes a thin wrapper around the library. Then build a second example engine that embeds Graphiti as a library, proving the pattern works end-to-end. At demo time, you run a single binary that serves both the workflow builder UI and the execution engine on the same port, with shared auth and no webhook round-trips.
+
+**Estimated Duration:** 4-5 weeks
+
+**Depends on:** Phase 4.5 (standalone example engine), Phase 5 (sub-workflows, themes), Phase 6 (validation)
+
+```mermaid
+graph LR
+    A["Extract Library<br/>Package"] --> B["go:embed<br/>Static Assets"]
+    B --> C["Config + Mount<br/>API"]
+    C --> D["Refactor Standalone<br/>to Use Library"]
+    D --> E["Reorganize<br/>Examples"]
+    E --> F["Embedded Engine<br/>Example"]
+    style F fill:#10B981,color:#fff
+```
+
+### Why This Matters
+
+Right now, Graphiti is a standalone process that talks to execution engines over HTTP webhooks. That's the right default for an open-source tool because it's language-agnostic and deployment-flexible. But there's a significant audience of Go developers who would rather embed the workflow builder directly into their application. One binary, one port, one deployment unit, no webhook configuration, no HMAC secrets, no inter-service networking.
+
+Think of it like the difference between running Redis as a separate server vs. using an embedded key-value store like BoltDB. Both are valid, and the right choice depends on the use case.
 
 ```mermaid
 graph TB
-    subgraph "Test Pyramid"
-        E2E["E2E Tests (Playwright)<br/>Key user flows<br/>~20 tests"]
-        HTTP["HTTP Handler Tests (httptest)<br/>Request/response contracts<br/>80%+ coverage"]
-        SVC["Service Tests (mocked ports)<br/>Use case logic<br/>90%+ coverage"]
-        DOM["Domain Unit Tests (pure functions)<br/>Commands, validation, clipboard<br/>95%+ coverage"]
+    subgraph "Mode A: Standalone (existing)"
+        G1["Graphiti<br/>:8080"]
+        E1["Engine<br/>:9090"]
+        PG1["Postgres"]
+        G1 -->|"webhook"| E1
+        E1 -->|"callback"| G1
+        E1 --> PG1
     end
 
-    E2E --> HTTP
-    HTTP --> SVC
-    SVC --> DOM
-
-    style DOM fill:#10B981,color:#fff
-    style SVC fill:#3B82F6,color:#fff
-    style HTTP fill:#F59E0B,color:#fff
-    style E2E fill:#EF4444,color:#fff
+    subgraph "Mode B: Embedded (new)"
+        SINGLE["Single Binary<br/>:8080<br/>┌──────────────┐<br/>│ Graphiti UI  │<br/>│ Engine Logic │<br/>│ API Handlers │<br/>└──────────────┘"]
+        PG2["Postgres"]
+        SINGLE --> PG2
+    end
 ```
 
-| Layer | Approach | Target | When |
-|---|---|---|---|
-| Domain | Unit tests, pure functions, table-driven, zero mocks | 95%+ | Phase 1, maintained forever |
-| App Services | Unit tests with mocked port interfaces (testify/mock) | 90%+ | Phase 1+, grows with features |
-| Adapters (SQLite) | Integration tests against `:memory:` SQLite | 85%+ | Phase 1+, grows with schema |
-| Adapters (Webhook) | Integration tests using `httptest.NewServer` | 85%+ | Phase 3 |
-| HTTP Handlers | `httptest` with mocked services | 80%+ | Phase 1+, grows with routes |
-| HTMX Interactions | Playwright E2E tests | Key flows | Phase 2+ |
-| SVG Rendering | Visual regression (screenshot comparison) | Key node types | Phase 2+ |
+### Library Architecture
 
-**TDD Enforcement:** Every pull request must include tests that were written before the implementation code. CI fails if coverage drops below the targets above. The test file must exist in the same commit as (or before) the implementation file.
+The library exposes a `graphiti` package that lets a host application mount the entire workflow builder into its own HTTP router. The host retains control over the server, auth, and lifecycle. Graphiti just provides the handlers, templates, and static assets.
+
+```mermaid
+graph TB
+    subgraph "Host Application"
+        MAIN["main.go"]
+        ROUTER["Host Router<br/>(chi, mux, echo, etc.)"]
+        AUTH["Host Auth Middleware"]
+        BIZ["Business Logic<br/>+ Engine"]
+    end
+
+    subgraph "graphiti package (library)"
+        CFG["graphiti.Config"]
+        APP["graphiti.App"]
+        HANDLERS["HTTP Handlers"]
+        ASSETS["Embedded Static Assets<br/>(go:embed)"]
+        DOM["Domain + Commands"]
+        PORTS["Port Interfaces"]
+    end
+
+    subgraph "Host-Provided Adapters"
+        REPO["WorkflowRepository<br/>(host's DB)"]
+        AUTHP["AuthProvider<br/>(host's auth)"]
+        DEPLOY["DeployTarget<br/>(in-process call)"]
+    end
+
+    MAIN --> ROUTER
+    ROUTER -->|"/graphiti/*"| APP
+    ROUTER --> AUTH
+    ROUTER --> BIZ
+    APP --> HANDLERS
+    APP --> ASSETS
+    HANDLERS --> DOM
+    DOM --> PORTS
+    PORTS --> REPO
+    PORTS --> AUTHP
+    PORTS --> DEPLOY
+```
+
+#### The Core API Surface
+
+```go
+package graphiti
+
+import (
+    "net/http"
+
+    "github.com/graphiti/graphiti/internal/domain"
+    "github.com/graphiti/graphiti/internal/ports/driven"
+)
+
+// Config controls how the embedded Graphiti instance behaves.
+type Config struct {
+    // BasePath is the URL prefix where Graphiti is mounted.
+    // Example: "/graphiti" means the dashboard lives at /graphiti/
+    // and the API lives at /graphiti/api/...
+    // Default: "/" (root)
+    BasePath string
+
+    // NodeDefinitionsPath is the filesystem path to YAML node definitions.
+    // If empty, uses the embedded default set.
+    NodeDefinitionsPath string
+
+    // ThemesPath is the filesystem path to theme YAML files.
+    // If empty, uses the embedded defaults (light + dark).
+    ThemesPath string
+
+    // CommandHistoryMaxDepth controls the undo stack size.
+    // Default: 100
+    CommandHistoryMaxDepth int
+
+    // Logger is an optional structured logger.
+    // If nil, logs to slog.Default().
+    Logger *slog.Logger
+}
+
+// Deps holds the interfaces the host application must provide.
+// This is how the library inverts control: instead of Graphiti owning
+// the database and auth, the host provides them.
+type Deps struct {
+    // Required: where workflows are stored.
+    WorkflowRepo driven.WorkflowRepository
+
+    // Required: where users are stored.
+    UserRepo driven.UserRepository
+
+    // Required: who the current user is.
+    // The host's auth middleware must populate the request context
+    // with a *domain.User before Graphiti's handlers see it.
+    // Use graphiti.UserContextKey as the context key.
+    AuthProvider driven.AuthProvider
+
+    // Optional: where execution runs are stored.
+    // If nil, execution mode is disabled.
+    ExecutionRepo driven.ExecutionRepository
+
+    // Optional: deploy target.
+    // If nil, the deploy button is hidden.
+    // For embedded mode, this is typically an in-process function call
+    // rather than a webhook.
+    DeployTarget driven.DeployTarget
+
+    // Optional: node definition loader.
+    // If nil, loads from Config.NodeDefinitionsPath or embedded defaults.
+    NodeDefinitionRepo driven.NodeDefinitionRepository
+}
+
+// App is an initialized Graphiti instance ready to serve HTTP requests.
+type App struct {
+    config   Config
+    deps     Deps
+    handler  http.Handler
+    services *appServices
+}
+
+// New creates a new Graphiti App from the given config and dependencies.
+// It initializes the node registry, compiles templates, and builds
+// the HTTP handler tree. It does NOT start a server.
+func New(cfg Config, deps Deps) (*App, error) {
+    // Validate deps
+    // Load node definitions
+    // Initialize services
+    // Build handler tree
+    // Return ready-to-mount App
+}
+
+// Handler returns an http.Handler that serves the entire Graphiti UI
+// and API. Mount this on your router at the configured BasePath.
+//
+// Example with chi:
+//   app, _ := graphiti.New(cfg, deps)
+//   router.Mount("/graphiti", app.Handler())
+//
+// Example with stdlib:
+//   http.Handle("/graphiti/", app.Handler())
+func (a *App) Handler() http.Handler {
+    return a.handler
+}
+
+// Services returns the driving port interfaces so the host application
+// can interact with Graphiti programmatically (e.g., create workflows,
+// execute commands, trigger deploys from code).
+func (a *App) Services() *Services {
+    return &Services{
+        Workflows:    a.services.workflowSvc,
+        NodeRegistry: a.services.nodeRegistry,
+        Executions:   a.services.executionSvc,
+    }
+}
+
+// Services provides programmatic access to Graphiti's use cases.
+type Services struct {
+    Workflows    driving.WorkflowService
+    NodeRegistry driving.NodeRegistryService
+    Executions   driving.ExecutionService
+}
+
+// UserContextKey is the context key the host's auth middleware must use
+// to store the authenticated *domain.User on the request context.
+// Graphiti's handlers read from this key.
+var UserContextKey = contextKey("graphiti-user")
+
+// WebSocketHub returns the WebSocket hub for pushing execution updates.
+// The host calls hub.BroadcastToWorkflow() when execution status changes,
+// instead of sending HTTP callbacks.
+func (a *App) WebSocketHub() *WebSocketHub {
+    return a.hub
+}
+```
+
+### Story 7.1: Extract the Library Package
+
+**What:** Restructure the codebase so that all of Graphiti's functionality is importable as `github.com/graphiti/graphiti`. The existing `cmd/server/main.go` becomes a thin consumer of this library. The domain, ports, app services, adapters, templates, and static assets all stay where they are, but the new top-level `graphiti.go` file provides the public API.
+
+**Project structure changes:**
+
+```
+graphiti/
+├── graphiti.go                      # Public API: New(), Config, Deps, App
+├── graphiti_test.go                 # Integration tests for the library API
+├── embed.go                         # go:embed directives for static assets
+├── cmd/
+│   └── server/
+│       └── main.go                  # Standalone mode (thin wrapper)
+├── internal/                        # Unchanged, but now consumed by graphiti.go too
+│   ├── domain/
+│   ├── ports/
+│   ├── app/
+│   └── adapters/
+├── web/
+│   ├── templates/                   # Templ files (compiled to Go)
+│   └── static/                      # JS, CSS, fonts (embedded via go:embed)
+├── config/
+│   └── nodes/                       # Default node definitions (embedded via go:embed)
+├── examples/
+│   ├── standalone-engine/           # Renamed from examples/engine/
+│   │   ├── cmd/engine/main.go
+│   │   ├── docker-compose.yml       # Graphiti + Engine + Postgres (separate processes)
+│   │   └── ...
+│   └── embedded-engine/             # NEW: Graphiti embedded in the engine
+│       ├── cmd/server/main.go       # Single binary: engine + Graphiti UI
+│       ├── docker-compose.yml       # Single service + Postgres
+│       └── ...
+└── ...
+```
+
+**Embedded static assets:**
+
+```go
+// embed.go
+package graphiti
+
+import "embed"
+
+//go:embed web/static/*
+var staticFS embed.FS
+
+//go:embed config/nodes/*
+var defaultNodeDefs embed.FS
+
+//go:embed config/themes/*
+var defaultThemes embed.FS
+```
+
+This means the host application gets all of Graphiti's CSS, JS, and default node definitions bundled into their binary automatically. No file paths to configure, no assets to deploy separately.
+
+**Acceptance Criteria:**
+
+- [ ] A new `graphiti.go` file exists at the package root with `New()`, `Config`, `Deps`, and `App` types
+- [ ] `graphiti.New(cfg, deps)` returns an `*App` that can be mounted on any `http.Handler`-compatible router
+- [ ] The `App.Handler()` returns a handler that serves the full Graphiti UI (dashboard, builder, execution mode) and all API endpoints
+- [ ] All static assets (JS, CSS, fonts) are embedded via `go:embed` and served from the handler without filesystem dependencies
+- [ ] Default node definitions are embedded and used when `Config.NodeDefinitionsPath` is empty
+- [ ] Default themes (light, dark) are embedded and used when `Config.ThemesPath` is empty
+- [ ] The `Config.BasePath` option correctly prefixes all routes (e.g., `/graphiti/api/workflows/...`)
+- [ ] The host application provides repository implementations via `Deps`, Graphiti never creates its own database connection
+- [ ] The host application's auth middleware populates `graphiti.UserContextKey` on the request context, Graphiti's handlers read from it
+- [ ] `App.Services()` returns the driving port interfaces so the host can create workflows, execute commands, and trigger deploys programmatically
+- [ ] `App.WebSocketHub()` returns the hub for pushing execution status updates without HTTP callbacks
+- [ ] No breaking changes to the existing standalone `cmd/server/main.go`, it still works exactly as before by calling `graphiti.New()` internally
+- [ ] The library has zero required external dependencies beyond Go stdlib and the explicitly imported packages (no implicit globals, no init() side effects)
+- [ ] Tests verify that `graphiti.New()` with minimal config and in-memory adapters returns a working handler that responds to `GET /` with the dashboard HTML
+
+#### Story 7.2: Refactor Standalone Server to Use the Library
+
+**What:** Rewrite `cmd/server/main.go` so it's just config loading, adapter initialization, and a call to `graphiti.New()`. This proves the library API is sufficient for the original use case and catches any missing pieces.
+
+```go
+// cmd/server/main.go
+package main
+
+import (
+    "log/slog"
+    "net/http"
+    "os"
+
+    "github.com/graphiti/graphiti"
+    "github.com/graphiti/graphiti/internal/adapters/driven/auth"
+    "github.com/graphiti/graphiti/internal/adapters/driven/sqlite"
+    "github.com/graphiti/graphiti/internal/adapters/driven/webhook"
+    "github.com/graphiti/graphiti/internal/adapters/driven/filesystem"
+)
+
+func main() {
+    cfg := loadAppConfig("config/app.yaml")
+    authCfg := loadAuthConfig("config/auth.yaml")
+
+    // Initialize driven adapters (same as before)
+    db := sqlite.NewDB(cfg.Storage.SQLite.Path)
+    defer db.Close()
+
+    workflowRepo := sqlite.NewWorkflowRepo(db)
+    userRepo := sqlite.NewUserRepo(db)
+    executionRepo := sqlite.NewExecutionRepo(db)
+
+    var authProvider driven.AuthProvider
+    if authCfg.Provider == "fake" {
+        authProvider = auth.NewFakeAuth()
+    } else {
+        authProvider = auth.NewGitHub(authCfg.GitHub)
+    }
+
+    var deployTarget driven.DeployTarget
+    if cfg.Deploy.Targets != nil {
+        deployTarget = webhook.NewDeployTarget(cfg.Deploy)
+    }
+
+    // Create the Graphiti app using the library API
+    app, err := graphiti.New(graphiti.Config{
+        BasePath:               "/",
+        NodeDefinitionsPath:    cfg.NodeDefinitions.Path,
+        CommandHistoryMaxDepth: cfg.CommandHistory.MaxUndoDepth,
+    }, graphiti.Deps{
+        WorkflowRepo:  workflowRepo,
+        UserRepo:      userRepo,
+        ExecutionRepo: executionRepo,
+        AuthProvider:  authProvider,
+        DeployTarget:  deployTarget,
+    })
+    if err != nil {
+        slog.Error("failed to initialize graphiti", "error", err)
+        os.Exit(1)
+    }
+
+    // The standalone server just serves the library's handler
+    slog.Info("starting graphiti", "addr", cfg.Server.Addr())
+    http.ListenAndServe(cfg.Server.Addr(), app.Handler())
+}
+```
+
+**Acceptance Criteria:**
+
+- [ ] `cmd/server/main.go` is under 80 lines of code (it's just wiring, no business logic)
+- [ ] The standalone server's behavior is identical to before the refactor (same routes, same responses, same auth flow)
+- [ ] All existing E2E tests pass without modification against the refactored standalone server
+- [ ] The `Makefile` targets (`build`, `run`, `test`) work unchanged
+- [ ] The `Dockerfile` builds and runs unchanged
+- [ ] The Phase 4.5 standalone engine example (`examples/standalone-engine/`) works unchanged with the refactored Graphiti server
+
+#### Story 7.3: In-Process Deploy Target Adapter
+
+**What:** In embedded mode, there's no webhook. When the user clicks Deploy, Graphiti calls a Go function directly in the host process. This story creates a `DeployTarget` adapter that invokes a callback function instead of making an HTTP request.
+
+```go
+// adapters/driven/inprocess/deploy_target.go
+package inprocess
+
+import (
+    "context"
+
+    "github.com/graphiti/graphiti/internal/domain"
+    "github.com/graphiti/graphiti/internal/ports/driven"
+)
+
+// DeployFunc is the signature the host provides for handling deploys.
+// It receives the full workflow definition and returns a result.
+type DeployFunc func(ctx context.Context, payload domain.DeployPayload) (*domain.DeployResult, error)
+
+// DeployTarget implements the DeployTarget port by calling a function
+// in the host process. No HTTP, no webhook, no HMAC, just a function call.
+type DeployTarget struct {
+    fn DeployFunc
+}
+
+func NewDeployTarget(fn DeployFunc) *DeployTarget {
+    return &DeployTarget{fn: fn}
+}
+
+func (d *DeployTarget) Deploy(ctx context.Context, payload domain.DeployPayload) (*domain.DeployResult, error) {
+    return d.fn(ctx, payload)
+}
+```
+
+**Acceptance Criteria:**
+
+- [ ] `inprocess.DeployTarget` implements the `driven.DeployTarget` port interface
+- [ ] The host's `DeployFunc` is called synchronously when the user clicks Deploy in the UI
+- [ ] The deploy payload is identical in structure to what the webhook adapter would send (same `DeployPayload` type)
+- [ ] If the `DeployFunc` returns an error, the deploy fails and the UI shows the error toast
+- [ ] If the `DeployFunc` returns a `DeployResult` with a run ID, Graphiti stores it for execution tracking
+- [ ] No HMAC signing, no HTTP overhead, no retries (those are webhook concerns)
+- [ ] Tests verify the adapter calls the function with the correct payload and propagates the result
+
+#### Story 7.4: In-Process Execution Status Reporting
+
+**What:** In embedded mode, the engine reports execution status by calling `App.WebSocketHub().BroadcastToWorkflow()` directly instead of sending HTTP callbacks. This story defines the pattern and provides a helper.
+
+```go
+// graphiti.go (addition to the App type)
+
+// ReportNodeStatus pushes an execution status update to all browsers
+// viewing the given workflow. This is the embedded-mode equivalent of
+// the POST /api/callbacks/execution endpoint.
+//
+// Call this from your engine's executor as each node starts and completes.
+func (a *App) ReportNodeStatus(ctx context.Context, update ExecutionUpdate) error {
+    // Persist to execution repo
+    if a.deps.ExecutionRepo != nil {
+        err := a.deps.ExecutionRepo.UpdateNodeStatus(
+            ctx, update.RunID, update.NodeID, update.ToNodeExecutionStatus(),
+        )
+        if err != nil {
+            return fmt.Errorf("failed to persist node status: %w", err)
+        }
+    }
+
+    // Push to connected browsers via WebSocket
+    a.hub.BroadcastToWorkflow(update.WorkflowID, WebSocketMessage{
+        Type: "execution.node_status",
+        Data: update,
+    })
+
+    return nil
+}
+
+// ExecutionUpdate is the data the host engine sends when a node's
+// execution status changes.
+type ExecutionUpdate struct {
+    RunID        string         `json:"runId"`
+    WorkflowID   string         `json:"workflowId"`
+    NodeID       string         `json:"nodeId"`
+    Status       string         `json:"status"` // "running", "completed", "failed", "skipped"
+    StartedAt    *time.Time     `json:"startedAt,omitempty"`
+    CompletedAt  *time.Time     `json:"completedAt,omitempty"`
+    ErrorMessage string         `json:"errorMessage,omitempty"`
+    OutputSummary map[string]any `json:"outputSummary,omitempty"`
+}
+```
+
+**Acceptance Criteria:**
+
+- [ ] `App.ReportNodeStatus()` persists the status update to the execution repository
+- [ ] `App.ReportNodeStatus()` broadcasts the update to all WebSocket clients viewing that workflow
+- [ ] The browser UI updates node status overlays in real-time (identical behavior to the callback endpoint)
+- [ ] The method is safe to call from goroutines (the hub handles concurrency internally)
+- [ ] If `ExecutionRepo` is nil (execution tracking disabled), the method still broadcasts to WebSocket clients
+- [ ] Tests verify that calling `ReportNodeStatus` results in a WebSocket message received by a connected test client
+
+#### Story 7.5: Reorganize Examples Directory
+
+**What:** Rename and restructure the examples to clearly distinguish the two integration patterns.
+
+**Before:**
+
+```
+examples/
+└── engine/               # The Phase 4.5 standalone engine
+```
+
+**After:**
+
+```
+examples/
+├── standalone-engine/    # Graphiti as a separate service + engine as a separate service
+│   ├── cmd/engine/
+│   │   └── main.go
+│   ├── internal/
+│   │   ├── receiver/
+│   │   ├── runner/
+│   │   ├── executors/
+│   │   └── callback/    # HTTP callback reporter (calls Graphiti's endpoint)
+│   ├── workflows/
+│   │   └── todo-api.yaml
+│   ├── init.sql
+│   ├── config.yaml
+│   ├── docker-compose.yml  # Three services: graphiti + engine + postgres
+│   ├── Dockerfile
+│   └── README.md
+│
+└── embedded-engine/      # Graphiti embedded in the engine as a library
+    ├── cmd/server/
+    │   └── main.go       # Single binary: engine + Graphiti UI
+    ├── internal/
+    │   ├── runner/        # Same runner logic (copied or shared)
+    │   ├── executors/     # Same executor implementations
+    │   └── reporter/      # In-process reporter (calls app.ReportNodeStatus)
+    ├── workflows/
+    │   └── todo-api.yaml  # Same workflow, works in both modes
+    ├── init.sql            # Same Postgres schema
+    ├── docker-compose.yml  # Two services: server + postgres (single binary!)
+    ├── Dockerfile
+    └── README.md
+```
+
+**Acceptance Criteria:**
+
+- [ ] `examples/standalone-engine/` contains the original Phase 4.5 engine, fully functional, unchanged behavior
+- [ ] `examples/embedded-engine/` contains the new embedded version
+- [ ] Both examples use the same `init.sql` Postgres schema
+- [ ] Both examples use the same `todo-api.yaml` workflow definition
+- [ ] Both examples use the same executor implementations (the business logic is identical)
+- [ ] The standalone engine's `docker-compose.yml` starts 3 services (graphiti, engine, postgres)
+- [ ] The embedded engine's `docker-compose.yml` starts 2 services (server, postgres)
+- [ ] Both README files include a quickstart with copy-pasteable commands
+- [ ] Both examples pass the same curl test suite (the API behavior is identical from the caller's perspective)
+
+#### Story 7.6: Embedded Engine Example
+
+**What:** Build the single-binary example that embeds Graphiti as a library alongside the ToDo execution engine. One process, one port, same functionality.
+
+```go
+// examples/embedded-engine/cmd/server/main.go
+package main
+
+import (
+    "context"
+    "database/sql"
+    "log/slog"
+    "net/http"
+    "os"
+
+    "github.com/graphiti/graphiti"
+    "github.com/graphiti/graphiti/internal/adapters/driven/auth"
+    "github.com/graphiti/graphiti/internal/adapters/driven/sqlite"
+    inprocess "github.com/graphiti/graphiti/internal/adapters/driven/inprocess"
+
+    "embedded-engine/internal/executors"
+    "embedded-engine/internal/reporter"
+    "embedded-engine/internal/runner"
+
+    _ "github.com/lib/pq"
+)
+
+func main() {
+    logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+    // Postgres for the ToDo data
+    pgDB, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
+    if err != nil {
+        logger.Error("failed to connect to postgres", "error", err)
+        os.Exit(1)
+    }
+    defer pgDB.Close()
+
+    // SQLite for Graphiti's workflow storage
+    graphitiDB := sqlite.NewDB("./data/graphiti.db")
+    defer graphitiDB.Close()
+
+    // Build the execution engine
+    executorRegistry := executors.NewRegistry(pgDB)
+    workflowRunner := runner.New(executorRegistry)
+
+    // We'll set the reporter after creating the Graphiti app (circular dep)
+    var graphitiApp *graphiti.App
+
+    // Create the in-process deploy target
+    // When the user clicks Deploy in the UI, this function is called directly.
+    deployTarget := inprocess.NewDeployTarget(
+        func(ctx context.Context, payload domain.DeployPayload) (*domain.DeployResult, error) {
+            logger.Info("workflow deployed",
+                "workflow", payload.Workflow.Name,
+                "version", payload.Workflow.Version,
+            )
+            // Store the workflow definition in the runner's registry
+            workflowRunner.Register(payload.Workflow)
+            return &domain.DeployResult{
+                Accepted: true,
+                Message:  "Workflow registered in engine",
+            }, nil
+        },
+    )
+
+    // Initialize Graphiti as a library
+    graphitiApp, err = graphiti.New(graphiti.Config{
+        BasePath:            "/",
+        CommandHistoryMaxDepth: 100,
+        Logger:              logger,
+    }, graphiti.Deps{
+        WorkflowRepo:  sqlite.NewWorkflowRepo(graphitiDB),
+        UserRepo:      sqlite.NewUserRepo(graphitiDB),
+        ExecutionRepo: sqlite.NewExecutionRepo(graphitiDB),
+        AuthProvider:  auth.NewFakeAuth(), // dev mode
+        DeployTarget:  deployTarget,
+    })
+    if err != nil {
+        logger.Error("failed to initialize graphiti", "error", err)
+        os.Exit(1)
+    }
+
+    // Create the in-process status reporter
+    statusReporter := reporter.NewInProcess(graphitiApp)
+
+    // Wire the reporter into the runner
+    workflowRunner.SetReporter(statusReporter)
+
+    // Build the combined router
+    mux := http.NewServeMux()
+
+    // Mount Graphiti UI and API at root
+    mux.Handle("/", graphitiApp.Handler())
+
+    // Mount the engine's API endpoints (the ToDo API)
+    // These are the paths that deployed workflows listen on
+    mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
+        workflowRunner.HandleRequest(w, r)
+    })
+
+    logger.Info("starting embedded graphiti + engine", "addr", ":8080")
+    http.ListenAndServe(":8080", mux)
+}
+```
+
+**In-process reporter:**
+
+```go
+// examples/embedded-engine/internal/reporter/inprocess.go
+package reporter
+
+import (
+    "context"
+    "time"
+
+    "github.com/graphiti/graphiti"
+)
+
+// InProcess reports execution status directly to the Graphiti app
+// without any HTTP round-trips.
+type InProcess struct {
+    app *graphiti.App
+}
+
+func NewInProcess(app *graphiti.App) *InProcess {
+    return &InProcess{app: app}
+}
+
+func (r *InProcess) ReportStatus(runID, workflowID, nodeID, status, errorMsg string) {
+    now := time.Now()
+    update := graphiti.ExecutionUpdate{
+        RunID:      runID,
+        WorkflowID: workflowID,
+        NodeID:     nodeID,
+        Status:     status,
+    }
+
+    if status == "running" {
+        update.StartedAt = &now
+    }
+    if status == "completed" || status == "failed" {
+        update.CompletedAt = &now
+    }
+    if errorMsg != "" {
+        update.ErrorMessage = errorMsg
+    }
+
+    // Direct function call, no HTTP, no serialization, no latency
+    r.app.ReportNodeStatus(context.Background(), update)
+}
+```
+
+**Docker Compose for embedded mode:**
+
+```yaml
+# examples/embedded-engine/docker-compose.yml
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: graphiti
+      POSTGRES_PASSWORD: graphiti_dev
+      POSTGRES_DB: graphiti_todos
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U graphiti"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: "postgres://graphiti:graphiti_dev@postgres:5432/graphiti_todos?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+```
+
+Notice: two services instead of three. One port instead of two. No HMAC secrets, no webhook URLs, no callback configuration.
+
+**Acceptance Criteria:**
+
+- [ ] `examples/embedded-engine/cmd/server/main.go` compiles to a single binary
+- [ ] The binary serves the Graphiti UI at `http://localhost:8080`
+- [ ] The binary serves the ToDo API at `http://localhost:8080/api/todos`
+- [ ] Deploying a workflow in the UI calls the in-process `DeployFunc` (no HTTP webhook)
+- [ ] Execution status updates flow through `app.ReportNodeStatus()` (no HTTP callbacks)
+- [ ] WebSocket updates still reach the browser in real-time (execution mode nodes light up)
+- [ ] The full curl test suite works identically to the standalone engine:
+
+```bash
+# List todos
+curl http://localhost:8080/api/todos
+
+# Create a todo
+curl -X POST http://localhost:8080/api/todos \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Test embedded mode"}'
+
+# Update a todo
+curl -X PUT http://localhost:8080/api/todos/1 \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Updated", "completed": true}'
+
+# Delete a todo
+curl -X DELETE http://localhost:8080/api/todos/1
+
+# Validation error
+curl -X POST http://localhost:8080/api/todos \
+  -H "Content-Type: application/json" \
+  -d '{"completed": true}'
+# Returns 400 with missing fields error
+```
+
+- [ ] `docker-compose up` starts only 2 services (server + postgres) instead of 3
+- [ ] The Dockerfile produces a single binary under 30MB
+- [ ] The example has its own `go.mod` that imports `github.com/graphiti/graphiti`
+- [ ] All executor implementations are identical to the standalone engine (shared or copied)
+- [ ] The same `todo-api.yaml` workflow definition works in both examples without modification
+- [ ] A README explains the differences between standalone and embedded modes and when to choose each
+
+#### Story 7.7: Developer Guide Update
+
+**What:** Extend the existing `docs/building-an-engine.md` with a new section covering the library integration pattern.
+
+**New sections to add:**
+
+```
+9. Embedding Graphiti as a Go Library
+   - When to embed vs. run standalone
+   - The graphiti.New() API
+   - Providing dependencies (repos, auth, deploy target)
+   - Mounting on your router
+   - BasePath configuration for coexistence with your app's routes
+
+10. In-Process Deploy and Execution Reporting
+    - Using inprocess.DeployTarget instead of webhooks
+    - Calling app.ReportNodeStatus() for live updates
+    - The ExecutionUpdate struct
+    - Goroutine safety
+
+11. Running the Embedded Example
+    - docker-compose quickstart (2 services instead of 3)
+    - Building the ToDo workflow
+    - Side-by-side comparison with the standalone example
+
+12. Choosing Between Standalone and Embedded
+    | Factor                    | Standalone          | Embedded            |
+    |---------------------------|---------------------|---------------------|
+    | Language of your engine   | Any (HTTP webhook)  | Go only             |
+    | Deployment units          | 2+ services         | 1 binary            |
+    | Network configuration     | Webhook URLs, HMAC  | None                |
+    | Auth                      | Independent         | Shared              |
+    | Scaling                   | Independent scaling | Scales together     |
+    | Latency on deploy/status  | HTTP round-trip     | Function call       |
+    | Complexity                | More infra          | More code coupling  |
+```
+
+**Acceptance Criteria:**
+
+- [ ] The guide includes a complete, compilable code example showing `graphiti.New()` with custom adapters
+- [ ] The "Choosing Between Standalone and Embedded" table clearly explains the tradeoffs
+- [ ] The in-process deploy and status reporting patterns are documented with code examples
+- [ ] The guide cross-references the two example directories for working reference code
+- [ ] A diagram shows the architectural difference between standalone (3 processes) and embedded (1 process)
+
+**Phase 7 Demo Checkpoint:**
+
+```bash
+# Terminal 1: Start the embedded example
+cd examples/embedded-engine
+docker-compose up
+
+# Terminal 2: Open the single-service UI
+open http://localhost:8080
+# Log in (fake auth), import the ToDo workflow, click Deploy
+# Notice: no webhook configuration needed. Deploy is instant.
+# Switch to Execution mode.
+
+# Terminal 3: Hit the API
+curl -s -X POST http://localhost:8080/api/todos \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Single binary mode!"}' | jq .
+
+# Watch the browser: nodes light up in real-time.
+# Same behavior as standalone, but one binary, one port,
+# zero inter-service configuration.
+```
+
+Then open the standalone example for comparison:
+
+```bash
+cd examples/standalone-engine
+docker-compose up
+# Three services start. Same workflow, same curl commands,
+# but on port 9090 for the API and port 8080 for the UI.
+```
+
+Both examples produce identical results. The difference is operational: one binary vs. three services, zero config vs. webhook URLs and HMAC secrets. The user picks whichever fits their deployment model.
 
 ## Appendix: Configuration Reference
 
@@ -4872,6 +5673,41 @@ auth:
     maxAge: 86400
     secure: true
 ```
+
+## Testing Strategy Summary
+
+Testing isn't a phase, it's continuous. But here's the expected coverage at each layer:
+
+```mermaid
+graph TB
+    subgraph "Test Pyramid"
+        E2E["E2E Tests (Playwright)<br/>Key user flows<br/>~20 tests"]
+        HTTP["HTTP Handler Tests (httptest)<br/>Request/response contracts<br/>80%+ coverage"]
+        SVC["Service Tests (mocked ports)<br/>Use case logic<br/>90%+ coverage"]
+        DOM["Domain Unit Tests (pure functions)<br/>Commands, validation, clipboard<br/>95%+ coverage"]
+    end
+
+    E2E --> HTTP
+    HTTP --> SVC
+    SVC --> DOM
+
+    style DOM fill:#10B981,color:#fff
+    style SVC fill:#3B82F6,color:#fff
+    style HTTP fill:#F59E0B,color:#fff
+    style E2E fill:#EF4444,color:#fff
+```
+
+| Layer | Approach | Target | When |
+|---|---|---|---|
+| Domain | Unit tests, pure functions, table-driven, zero mocks | 95%+ | Phase 1, maintained forever |
+| App Services | Unit tests with mocked port interfaces (testify/mock) | 90%+ | Phase 1+, grows with features |
+| Adapters (SQLite) | Integration tests against `:memory:` SQLite | 85%+ | Phase 1+, grows with schema |
+| Adapters (Webhook) | Integration tests using `httptest.NewServer` | 85%+ | Phase 3 |
+| HTTP Handlers | `httptest` with mocked services | 80%+ | Phase 1+, grows with routes |
+| HTMX Interactions | Playwright E2E tests | Key flows | Phase 2+ |
+| SVG Rendering | Visual regression (screenshot comparison) | Key node types | Phase 2+ |
+
+**TDD Enforcement:** Every pull request must include tests that were written before the implementation code. CI fails if coverage drops below the targets above. The test file must exist in the same commit as (or before) the implementation file.
 
 ## Appendix: Open Questions Carried Forward
 
