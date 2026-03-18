@@ -8,7 +8,14 @@ package layouts
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-func Base(title string) templ.Component {
+import (
+	"regexp"
+	"strings"
+
+	"graphiti/web/templates"
+)
+
+func Base(title string, b templates.Branding) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -29,20 +36,111 @@ func Base(title string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"en\" x-data=\"{ themeMode: localStorage.getItem('graphiti-theme') || 'system', get resolvedTheme() { if (this.themeMode === 'system') return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; return this.themeMode; } }\" x-bind:data-theme=\"resolvedTheme\" x-init=\"$watch('themeMode', val => localStorage.setItem('graphiti-theme', val)); window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (themeMode === 'system') $el.setAttribute('data-theme', resolvedTheme) })\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"en\" x-data=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
-		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(title)
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs("{ themeMode: localStorage.getItem('" + safeStorageKey(b) + "') || 'system', get resolvedTheme() { if (this.themeMode === 'system') return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; return this.themeMode; } }")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/layouts/base.templ`, Line: 12, Col: 16}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/layouts/base.templ`, Line: 13, Col: 255}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " - Graphiti</title><script defer src=\"https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js\"></script><script src=\"https://unpkg.com/htmx.org@2.0.4\"></script><style>[x-cloak] { display: none !important; }</style><link rel=\"stylesheet\" href=\"/static/css/base.css\"><link rel=\"stylesheet\" href=\"/static/css/components.css\"><link rel=\"stylesheet\" href=\"/static/css/panels.css\"><link rel=\"stylesheet\" href=\"/static/css/canvas.css\"><link rel=\"stylesheet\" href=\"/static/css/nodes.css\"><link rel=\"stylesheet\" href=\"/static/css/themes/light.css\"><link rel=\"stylesheet\" href=\"/static/css/themes/dark.css\"></head><body>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" x-bind:data-theme=\"resolvedTheme\" x-init=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var3 string
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs("$watch('themeMode', val => localStorage.setItem('" + safeStorageKey(b) + "', val)); window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (themeMode === 'system') $el.setAttribute('data-theme', resolvedTheme) })")
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/layouts/base.templ`, Line: 15, Col: 258}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var4 string
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(title)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/layouts/base.templ`, Line: 19, Col: 16}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, " - ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var5 string
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(b.TitleSuffix)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/layouts/base.templ`, Line: 19, Col: 36}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</title>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if b.FaviconPath != "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<link rel=\"icon\" href=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var6 templ.SafeURL
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinURLErrs(b.FaviconPath)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/layouts/base.templ`, Line: 21, Col: 40}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<script defer src=\"https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js\"></script><script src=\"https://unpkg.com/htmx.org@2.0.4\"></script><style>[x-cloak] { display: none !important; }</style><link rel=\"stylesheet\" href=\"/static/css/base.css\"><link rel=\"stylesheet\" href=\"/static/css/components.css\"><link rel=\"stylesheet\" href=\"/static/css/panels.css\"><link rel=\"stylesheet\" href=\"/static/css/canvas.css\"><link rel=\"stylesheet\" href=\"/static/css/nodes.css\"><link rel=\"stylesheet\" href=\"/static/css/themes/light.css\"><link rel=\"stylesheet\" href=\"/static/css/themes/dark.css\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if b.CustomCSSPath != "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<link rel=\"stylesheet\" href=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var7 templ.SafeURL
+			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinURLErrs(b.CustomCSSPath)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/layouts/base.templ`, Line: 34, Col: 48}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		if hasAccentOverrides(b) {
+			templ_7745c5c3_Err = templ.Raw(buildAccentStyleTag(b)).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</head><body>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -50,12 +148,75 @@ func Base(title string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</body></html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		return nil
 	})
+}
+
+var validStorageKey = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+
+func safeStorageKey(b templates.Branding) string {
+	key := b.ThemeStorageKey
+	if key != "" && validStorageKey.MatchString(key) {
+		return key
+	}
+	return "graphiti-theme"
+}
+
+func hasAccentOverrides(b templates.Branding) bool {
+	return b.AccentLight != "" || b.AccentHoverLight != "" || b.AccentDark != "" || b.AccentHoverDark != ""
+}
+
+var validCSSColor = regexp.MustCompile(`^#[0-9a-fA-F]{3,8}$`)
+
+func safeColor(v string) string {
+	if validCSSColor.MatchString(v) {
+		return v
+	}
+	return ""
+}
+
+func buildAccentStyleTag(b templates.Branding) string {
+	var sb strings.Builder
+	lightAccent := safeColor(b.AccentLight)
+	lightHover := safeColor(b.AccentHoverLight)
+	darkAccent := safeColor(b.AccentDark)
+	darkHover := safeColor(b.AccentHoverDark)
+
+	sb.WriteString("<style>")
+	if lightAccent != "" || lightHover != "" {
+		sb.WriteString(`[data-theme="light"]{`)
+		if lightAccent != "" {
+			sb.WriteString("--accent:")
+			sb.WriteString(lightAccent)
+			sb.WriteString(";")
+		}
+		if lightHover != "" {
+			sb.WriteString("--accent-hover:")
+			sb.WriteString(lightHover)
+			sb.WriteString(";")
+		}
+		sb.WriteString("}")
+	}
+	if darkAccent != "" || darkHover != "" {
+		sb.WriteString(`[data-theme="dark"]{`)
+		if darkAccent != "" {
+			sb.WriteString("--accent:")
+			sb.WriteString(darkAccent)
+			sb.WriteString(";")
+		}
+		if darkHover != "" {
+			sb.WriteString("--accent-hover:")
+			sb.WriteString(darkHover)
+			sb.WriteString(";")
+		}
+		sb.WriteString("}")
+	}
+	sb.WriteString("</style>")
+	return sb.String()
 }
 
 var _ = templruntime.GeneratedTemplate

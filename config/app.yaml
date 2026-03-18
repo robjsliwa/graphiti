@@ -37,3 +37,22 @@ commandHistory:
 logging:
   level: info
   format: json
+
+# White-label branding (all fields optional, defaults to Graphiti branding)
+# branding:
+#   appName: "Graphiti"                    # Nav bar title, login heading, startup message
+#   tagline: "Visual Workflow Builder"     # Login page subtitle
+#   titleSuffix: "Graphiti"               # Browser tab: "{page} - {suffix}"
+#   logo:
+#     svg: ""                              # Inline SVG string (takes priority over path)
+#                                          # WARNING: rendered unescaped — only use trusted SVG content
+#     path: ""                             # File path to .svg file, read at startup
+#                                          # WARNING: rendered unescaped — only use trusted SVG files
+#   favicon: ""                            # File path to favicon, served at /favicon.ico
+#   themeStorageKey: "graphiti-theme"       # localStorage key for theme preference
+#   colors:
+#     accentLight: ""                      # Override --accent in light theme (e.g. "#E11D48")
+#     accentHoverLight: ""                 # Override --accent-hover in light theme
+#     accentDark: ""                       # Override --accent in dark theme
+#     accentHoverDark: ""                  # Override --accent-hover in dark theme
+#   customCSS: ""                          # Path to additional CSS file, loaded last

@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"graphiti/web/templates"
 	"graphiti/web/templates/layouts"
 	"graphiti/web/templates/partials"
 )
@@ -8,15 +9,16 @@ import (
 type LoginData struct {
 	Provider string
 	Message  string
+	Branding templates.Branding
 }
 
-templ Login() {
-	@layouts.Base("Login") {
+templ Login(data LoginData) {
+	@layouts.Base("Login", data.Branding) {
 		<div class="login-page">
 			<div class="login-card">
-				@partials.Logo(64)
-				<h1>Graphiti</h1>
-				<p>Visual Workflow Builder</p>
+				@partials.BrandedLogo(data.Branding.LogoSVG, 64)
+				<h1>{ data.Branding.AppName }</h1>
+				<p>{ data.Branding.Tagline }</p>
 				<a href="/auth/login" class="btn btn-primary btn-lg">
 					Login
 				</a>
@@ -26,12 +28,12 @@ templ Login() {
 }
 
 templ LoginWithProvider(data LoginData) {
-	@layouts.Base("Login") {
+	@layouts.Base("Login", data.Branding) {
 		<div class="login-page">
 			<div class="login-card">
-				@partials.Logo(64)
-				<h1>Graphiti</h1>
-				<p>Visual Workflow Builder</p>
+				@partials.BrandedLogo(data.Branding.LogoSVG, 64)
+				<h1>{ data.Branding.AppName }</h1>
+				<p>{ data.Branding.Tagline }</p>
 				if data.Message != "" {
 					<div class="login-message">{ data.Message }</div>
 				}
@@ -51,3 +53,4 @@ templ LoginWithProvider(data LoginData) {
 		</div>
 	}
 }
+

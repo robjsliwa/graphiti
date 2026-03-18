@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"graphiti/internal/domain"
+	"graphiti/web/templates"
 	"graphiti/web/templates/layouts"
 	"graphiti/web/templates/partials"
 	"graphiti/web/templates/svg"
@@ -16,14 +17,15 @@ type BuilderData struct {
 	ParentWorkflowID   string
 	ParentWorkflowName string
 	ParentNodeID       string
+	Branding           templates.Branding
 }
 
 templ Builder(data BuilderData) {
-	@layouts.Base(data.Workflow.Name) {
+	@layouts.Base(data.Workflow.Name, data.Branding) {
 		<nav class="top-nav">
 			<div class="nav-brand">
-				@partials.Logo(36)
-				<span class="nav-title">Graphiti</span>
+				@partials.BrandedLogo(data.Branding.LogoSVG, 36)
+				<span class="nav-title">{ data.Branding.AppName }</span>
 			</div>
 			<div class="nav-breadcrumb">
 				<a href="/">Workflows</a> /

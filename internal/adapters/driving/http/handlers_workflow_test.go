@@ -1,12 +1,15 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+
+	"graphiti/web/templates"
 )
 
 func TestHandleRenameWorkflow_Success(t *testing.T) {
@@ -180,5 +183,66 @@ func TestHandleNodeRef_NodeNotFound(t *testing.T) {
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func requestWithSession(r *http.Request) *http.Request {
+	session := &Session{UserID: "user-1", Username: "testuser"}
+	ctx := context.WithValue(r.Context(), userContextKey, session)
+	return r.WithContext(ctx)
+}
+
+func TestHandleDashboard_RendersBranding(t *testing.T) {
+	svc, _, _ := testSetup(t)
+
+	branding := templates.Branding{
+		AppName:     "Acme Workflows",
+		TitleSuffix: "Acme",
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /", handleDashboard(svc, branding))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req = requestWithSession(req)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	body := rec.Body.String()
+	if !strings.Contains(body, "Acme Workflows") {
+		t.Errorf("expected body to contain %q", "Acme Workflows")
+	}
+	if !strings.Contains(body, "Acme</") {
+		t.Errorf("expected title suffix %q in body", "Acme")
+	}
+}
+
+func TestHandleWorkflowBuilder_RendersBranding(t *testing.T) {
+	svc, registry, wfID := testSetup(t)
+
+	branding := templates.Branding{
+		AppName:     "Acme Workflows",
+		TitleSuffix: "Acme",
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /workflows/{id}", handleWorkflowBuilder(svc, registry, branding))
+
+	req := httptest.NewRequest(http.MethodGet, "/workflows/"+wfID, nil)
+	req = requestWithSession(req)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	body := rec.Body.String()
+	if !strings.Contains(body, "Acme Workflows") {
+		t.Errorf("expected body to contain %q", "Acme Workflows")
 	}
 }

@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import "fmt"
 
-func Logo(size int) templ.Component {
+func CustomLogo(svg string, size int) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -31,33 +31,119 @@ func Logo(size int) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<svg viewBox=\"0 0 500 500\" width=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<span style=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
-		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", size))
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templruntime.SanitizeStyleAttributeValues(fmt.Sprintf("display:inline-flex;width:%dpx;height:%dpx", size, size))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/partials/logo.templ`, Line: 6, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/partials/logo.templ`, Line: 6, Col: 84}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" height=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var3 string
-		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", size))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/partials/logo.templ`, Line: 6, Col: 94}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
+		templ_7745c5c3_Err = templ.Raw(svg).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" xmlns=\"http://www.w3.org/2000/svg\"><defs><linearGradient id=\"logo-gradCenter\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\"><stop offset=\"0%\" stop-color=\"#FF007A\"></stop> <stop offset=\"100%\" stop-color=\"#7928CA\"></stop></linearGradient> <linearGradient id=\"logo-grad1\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\"><stop offset=\"0%\" stop-color=\"#00DFD8\"></stop> <stop offset=\"100%\" stop-color=\"#007CF0\"></stop></linearGradient> <linearGradient id=\"logo-grad2\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\"><stop offset=\"0%\" stop-color=\"#FFDF00\"></stop> <stop offset=\"100%\" stop-color=\"#FF4B00\"></stop></linearGradient> <linearGradient id=\"logo-grad3\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\"><stop offset=\"0%\" stop-color=\"#39FF14\"></stop> <stop offset=\"100%\" stop-color=\"#00B300\"></stop></linearGradient></defs><!-- Edge paths --><path d=\"M 250 250 C 220 180, 180 150, 120 150\" stroke=\"url(#logo-grad1)\" stroke-width=\"16\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 150 135 L 120 150 L 140 175\" stroke=\"url(#logo-grad1)\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path> <path d=\"M 250 250 C 280 180, 330 160, 380 160\" stroke=\"url(#logo-grad2)\" stroke-width=\"14\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 350 140 L 380 160 L 355 185\" stroke=\"url(#logo-grad2)\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path> <path d=\"M 250 250 C 200 280, 160 300, 140 340\" stroke=\"url(#logo-grad3)\" stroke-width=\"14\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 165 315 L 140 340 L 175 350\" stroke=\"url(#logo-grad3)\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path> <path d=\"M 250 250 C 280 300, 310 330, 340 360\" stroke=\"url(#logo-grad1)\" stroke-width=\"18\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 315 365 L 340 360 L 325 335\" stroke=\"url(#logo-grad1)\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path><!-- Main nodes --><circle cx=\"120\" cy=\"150\" r=\"25\" fill=\"url(#logo-grad1)\"></circle> <circle cx=\"380\" cy=\"160\" r=\"30\" fill=\"url(#logo-grad2)\"></circle> <circle cx=\"140\" cy=\"340\" r=\"20\" fill=\"url(#logo-grad3)\"></circle> <circle cx=\"340\" cy=\"360\" r=\"35\" fill=\"url(#logo-grad1)\"></circle> <circle cx=\"250\" cy=\"250\" r=\"45\" fill=\"url(#logo-gradCenter)\"></circle><!-- Highlight arcs --><g fill=\"none\" stroke=\"rgba(255,255,255,0.5)\" stroke-linecap=\"round\"><path d=\"M 225 225 A 25 25 0 0 1 265 220\" stroke-width=\"6\"></path> <path d=\"M 108 138 A 12 12 0 0 1 125 133\" stroke-width=\"4\"></path> <path d=\"M 365 145 A 16 16 0 0 1 385 140\" stroke-width=\"4\"></path> <path d=\"M 130 330 A 10 10 0 0 1 145 328\" stroke-width=\"3\"></path> <path d=\"M 322 342 A 18 18 0 0 1 345 335\" stroke-width=\"5\"></path></g></svg>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</span>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+func BrandedLogo(svg string, size int) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var3 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var3 == nil {
+			templ_7745c5c3_Var3 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		if svg != "" {
+			templ_7745c5c3_Err = CustomLogo(svg, size).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			templ_7745c5c3_Err = Logo(size).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		return nil
+	})
+}
+
+func Logo(size int) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var4 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var4 == nil {
+			templ_7745c5c3_Var4 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<svg viewBox=\"0 0 500 500\" width=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var5 string
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", size))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/partials/logo.templ`, Line: 20, Col: 59}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" height=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var6 string
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", size))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/partials/logo.templ`, Line: 20, Col: 94}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" xmlns=\"http://www.w3.org/2000/svg\"><defs><linearGradient id=\"logo-gradCenter\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\"><stop offset=\"0%\" stop-color=\"#FF007A\"></stop> <stop offset=\"100%\" stop-color=\"#7928CA\"></stop></linearGradient> <linearGradient id=\"logo-grad1\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\"><stop offset=\"0%\" stop-color=\"#00DFD8\"></stop> <stop offset=\"100%\" stop-color=\"#007CF0\"></stop></linearGradient> <linearGradient id=\"logo-grad2\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\"><stop offset=\"0%\" stop-color=\"#FFDF00\"></stop> <stop offset=\"100%\" stop-color=\"#FF4B00\"></stop></linearGradient> <linearGradient id=\"logo-grad3\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\"><stop offset=\"0%\" stop-color=\"#39FF14\"></stop> <stop offset=\"100%\" stop-color=\"#00B300\"></stop></linearGradient></defs><!-- Edge paths --><path d=\"M 250 250 C 220 180, 180 150, 120 150\" stroke=\"url(#logo-grad1)\" stroke-width=\"16\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 150 135 L 120 150 L 140 175\" stroke=\"url(#logo-grad1)\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path> <path d=\"M 250 250 C 280 180, 330 160, 380 160\" stroke=\"url(#logo-grad2)\" stroke-width=\"14\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 350 140 L 380 160 L 355 185\" stroke=\"url(#logo-grad2)\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path> <path d=\"M 250 250 C 200 280, 160 300, 140 340\" stroke=\"url(#logo-grad3)\" stroke-width=\"14\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 165 315 L 140 340 L 175 350\" stroke=\"url(#logo-grad3)\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path> <path d=\"M 250 250 C 280 300, 310 330, 340 360\" stroke=\"url(#logo-grad1)\" stroke-width=\"18\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 315 365 L 340 360 L 325 335\" stroke=\"url(#logo-grad1)\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path><!-- Main nodes --><circle cx=\"120\" cy=\"150\" r=\"25\" fill=\"url(#logo-grad1)\"></circle> <circle cx=\"380\" cy=\"160\" r=\"30\" fill=\"url(#logo-grad2)\"></circle> <circle cx=\"140\" cy=\"340\" r=\"20\" fill=\"url(#logo-grad3)\"></circle> <circle cx=\"340\" cy=\"360\" r=\"35\" fill=\"url(#logo-grad1)\"></circle> <circle cx=\"250\" cy=\"250\" r=\"45\" fill=\"url(#logo-gradCenter)\"></circle><!-- Highlight arcs --><g fill=\"none\" stroke=\"rgba(255,255,255,0.5)\" stroke-linecap=\"round\"><path d=\"M 225 225 A 25 25 0 0 1 265 220\" stroke-width=\"6\"></path> <path d=\"M 108 138 A 12 12 0 0 1 125 133\" stroke-width=\"4\"></path> <path d=\"M 365 145 A 16 16 0 0 1 385 140\" stroke-width=\"4\"></path> <path d=\"M 130 330 A 10 10 0 0 1 145 328\" stroke-width=\"3\"></path> <path d=\"M 322 342 A 18 18 0 0 1 345 335\" stroke-width=\"5\"></path></g></svg>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

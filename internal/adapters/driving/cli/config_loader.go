@@ -19,6 +19,7 @@ type Config struct {
 	Auth            AuthConfig            `yaml:"auth"`
 	Deploy          DeployConfig          `yaml:"deploy"`
 	CommandHistory  CommandHistoryConfig  `yaml:"commandHistory"`
+	Branding        BrandingConfig        `yaml:"branding"`
 }
 
 // ServerConfig holds HTTP server settings.
@@ -93,6 +94,32 @@ type CommandHistoryConfig struct {
 	MaxUndoDepth int `yaml:"maxUndoDepth"`
 }
 
+// BrandingConfig holds white-label branding settings.
+type BrandingConfig struct {
+	AppName         string             `yaml:"appName"`
+	Tagline         string             `yaml:"tagline"`
+	TitleSuffix     string             `yaml:"titleSuffix"`
+	Logo            LogoConfig         `yaml:"logo"`
+	Favicon         string             `yaml:"favicon"`
+	ThemeStorageKey string             `yaml:"themeStorageKey"`
+	Colors          BrandingColorConfig `yaml:"colors"`
+	CustomCSS       string             `yaml:"customCSS"`
+}
+
+// LogoConfig holds logo settings.
+type LogoConfig struct {
+	SVG  string `yaml:"svg"`
+	Path string `yaml:"path"`
+}
+
+// BrandingColorConfig holds accent color overrides.
+type BrandingColorConfig struct {
+	AccentLight      string `yaml:"accentLight"`
+	AccentHoverLight string `yaml:"accentHoverLight"`
+	AccentDark       string `yaml:"accentDark"`
+	AccentHoverDark  string `yaml:"accentHoverDark"`
+}
+
 // Load reads and merges config from the given YAML files.
 // It loads .env files first (if present), then expands ${VAR} references
 // in YAML values from the environment.
@@ -123,6 +150,12 @@ func Load(paths ...string) (*Config, error) {
 			},
 		},
 		CommandHistory: CommandHistoryConfig{MaxUndoDepth: 100},
+		Branding: BrandingConfig{
+			AppName:         "Graphiti",
+			Tagline:         "Visual Workflow Builder",
+			TitleSuffix:     "Graphiti",
+			ThemeStorageKey: "graphiti-theme",
+		},
 	}
 
 	for _, path := range paths {

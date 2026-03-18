@@ -19,6 +19,7 @@ import (
 	httpAdapter "graphiti/internal/adapters/driving/http"
 	"graphiti/internal/app"
 	"graphiti/internal/ports/driven"
+	"graphiti/web/templates"
 )
 
 func main() {
@@ -116,16 +117,66 @@ func main() {
 	sessionMaxAge := time.Duration(cfg.Auth.Session.MaxAge) * time.Second
 	sessionStore := httpAdapter.NewSessionStore(cfg.Auth.Session.Secret, sessionMaxAge, cfg.Auth.Session.Secure)
 
+	// Resolve branding
+	branding := templates.Branding{
+		AppName:          cfg.Branding.AppName,
+		Tagline:          cfg.Branding.Tagline,
+		TitleSuffix:      cfg.Branding.TitleSuffix,
+		LogoSVG:          cfg.Branding.Logo.SVG,
+		ThemeStorageKey:  cfg.Branding.ThemeStorageKey,
+		AccentLight:      cfg.Branding.Colors.AccentLight,
+		AccentHoverLight: cfg.Branding.Colors.AccentHoverLight,
+		AccentDark:       cfg.Branding.Colors.AccentDark,
+		AccentHoverDark:  cfg.Branding.Colors.AccentHoverDark,
+	}
+
+	// If logo SVG not inline but path is set, read from file
+	if branding.LogoSVG == "" && cfg.Branding.Logo.Path != "" {
+		logoData, err := os.ReadFile(cfg.Branding.Logo.Path)
+		if err != nil {
+			slog.Warn("failed to read logo file", "path", cfg.Branding.Logo.Path, "error", err)
+		} else {
+			branding.LogoSVG = string(logoData)
+		}
+	}
+
+	var faviconFilePath string
+	if cfg.Branding.Favicon != "" {
+		if info, err := os.Stat(cfg.Branding.Favicon); err != nil {
+			slog.Warn("favicon file not found, ignoring", "path", cfg.Branding.Favicon, "error", err)
+		} else if info.IsDir() {
+			slog.Warn("favicon path is a directory, ignoring", "path", cfg.Branding.Favicon)
+		} else {
+			faviconFilePath = cfg.Branding.Favicon
+			branding.FaviconPath = "/favicon.ico"
+		}
+	}
+
+	var customCSSFilePath string
+	if cfg.Branding.CustomCSS != "" {
+		if info, err := os.Stat(cfg.Branding.CustomCSS); err != nil {
+			slog.Warn("custom CSS file not found, ignoring", "path", cfg.Branding.CustomCSS, "error", err)
+		} else if info.IsDir() {
+			slog.Warn("custom CSS path is a directory, ignoring", "path", cfg.Branding.CustomCSS)
+		} else {
+			customCSSFilePath = cfg.Branding.CustomCSS
+			branding.CustomCSSPath = "/branding/custom.css"
+		}
+	}
+
 	// HTTP router
 	router := httpAdapter.NewRouter(httpAdapter.RouterDeps{
-		WorkflowSvc:  workflowSvc,
-		ExecutionSvc: execSvc,
-		NodeRegistry: nodeRegistry,
-		AuthProvider: authAdapter,
-		UserRepo:     userRepo,
-		SessionStore: sessionStore,
-		WSHub:        wsHub,
-		HMACSecret:   cfg.Deploy.HMACSecret,
+		WorkflowSvc:       workflowSvc,
+		ExecutionSvc:      execSvc,
+		NodeRegistry:      nodeRegistry,
+		AuthProvider:      authAdapter,
+		UserRepo:          userRepo,
+		SessionStore:      sessionStore,
+		WSHub:             wsHub,
+		HMACSecret:        cfg.Deploy.HMACSecret,
+		Branding:          branding,
+		FaviconFilePath:   faviconFilePath,
+		CustomCSSFilePath: customCSSFilePath,
 	})
 
 	// Start server
@@ -138,7 +189,7 @@ func main() {
 
 	go func() {
 		slog.Info("starting server", "addr", cfg.Server.Addr())
-		fmt.Printf("\n  Graphiti is running at http://localhost:%d\n\n", cfg.Server.Port)
+		fmt.Printf("\n  %s is running at http://localhost:%d\n\n", branding.AppName, cfg.Server.Port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			slog.Error("server error", "error", err)
 			os.Exit(1)

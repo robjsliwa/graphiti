@@ -1,15 +1,25 @@
 package layouts
 
-templ Base(title string) {
+import (
+	"regexp"
+	"strings"
+
+	"graphiti/web/templates"
+)
+
+templ Base(title string, b templates.Branding) {
 	<!DOCTYPE html>
 	<html lang="en"
-		x-data="{ themeMode: localStorage.getItem('graphiti-theme') || 'system', get resolvedTheme() { if (this.themeMode === 'system') return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; return this.themeMode; } }"
+		x-data={ "{ themeMode: localStorage.getItem('" + safeStorageKey(b) + "') || 'system', get resolvedTheme() { if (this.themeMode === 'system') return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; return this.themeMode; } }" }
 		x-bind:data-theme="resolvedTheme"
-		x-init="$watch('themeMode', val => localStorage.setItem('graphiti-theme', val)); window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (themeMode === 'system') $el.setAttribute('data-theme', resolvedTheme) })">
+		x-init={ "$watch('themeMode', val => localStorage.setItem('" + safeStorageKey(b) + "', val)); window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (themeMode === 'system') $el.setAttribute('data-theme', resolvedTheme) })" }>
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-		<title>{ title } - Graphiti</title>
+		<title>{ title } - { b.TitleSuffix }</title>
+		if b.FaviconPath != "" {
+			<link rel="icon" href={ b.FaviconPath }/>
+		}
 		<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
 		<script src="https://unpkg.com/htmx.org@2.0.4"></script>
 		<style>[x-cloak] { display: none !important; }</style>
@@ -20,9 +30,78 @@ templ Base(title string) {
 		<link rel="stylesheet" href="/static/css/nodes.css"/>
 		<link rel="stylesheet" href="/static/css/themes/light.css"/>
 		<link rel="stylesheet" href="/static/css/themes/dark.css"/>
+		if b.CustomCSSPath != "" {
+			<link rel="stylesheet" href={ b.CustomCSSPath }/>
+		}
+		if hasAccentOverrides(b) {
+			@templ.Raw(buildAccentStyleTag(b))
+		}
 	</head>
 	<body>
 		{ children... }
 	</body>
 	</html>
+}
+
+var validStorageKey = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+
+func safeStorageKey(b templates.Branding) string {
+	key := b.ThemeStorageKey
+	if key != "" && validStorageKey.MatchString(key) {
+		return key
+	}
+	return "graphiti-theme"
+}
+
+func hasAccentOverrides(b templates.Branding) bool {
+	return b.AccentLight != "" || b.AccentHoverLight != "" || b.AccentDark != "" || b.AccentHoverDark != ""
+}
+
+var validCSSColor = regexp.MustCompile(`^#[0-9a-fA-F]{3,8}$`)
+
+func safeColor(v string) string {
+	if validCSSColor.MatchString(v) {
+		return v
+	}
+	return ""
+}
+
+func buildAccentStyleTag(b templates.Branding) string {
+	var sb strings.Builder
+	lightAccent := safeColor(b.AccentLight)
+	lightHover := safeColor(b.AccentHoverLight)
+	darkAccent := safeColor(b.AccentDark)
+	darkHover := safeColor(b.AccentHoverDark)
+
+	sb.WriteString("<style>")
+	if lightAccent != "" || lightHover != "" {
+		sb.WriteString(`[data-theme="light"]{`)
+		if lightAccent != "" {
+			sb.WriteString("--accent:")
+			sb.WriteString(lightAccent)
+			sb.WriteString(";")
+		}
+		if lightHover != "" {
+			sb.WriteString("--accent-hover:")
+			sb.WriteString(lightHover)
+			sb.WriteString(";")
+		}
+		sb.WriteString("}")
+	}
+	if darkAccent != "" || darkHover != "" {
+		sb.WriteString(`[data-theme="dark"]{`)
+		if darkAccent != "" {
+			sb.WriteString("--accent:")
+			sb.WriteString(darkAccent)
+			sb.WriteString(";")
+		}
+		if darkHover != "" {
+			sb.WriteString("--accent-hover:")
+			sb.WriteString(darkHover)
+			sb.WriteString(";")
+		}
+		sb.WriteString("}")
+	}
+	sb.WriteString("</style>")
+	return sb.String()
 }

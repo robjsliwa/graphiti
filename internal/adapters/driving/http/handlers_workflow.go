@@ -9,11 +9,12 @@ import (
 
 	"graphiti/internal/domain"
 	"graphiti/internal/ports/driving"
+	"graphiti/web/templates"
 	"graphiti/web/templates/pages"
 	"graphiti/web/templates/partials"
 )
 
-func handleDashboard(svc driving.WorkflowService) http.HandlerFunc {
+func handleDashboard(svc driving.WorkflowService, branding templates.Branding) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
@@ -36,6 +37,7 @@ func handleDashboard(svc driving.WorkflowService) http.HandlerFunc {
 		data := pages.DashboardData{
 			Username:  session.Username,
 			Workflows: workflows,
+			Branding:  branding,
 		}
 		pages.Dashboard(data).Render(r.Context(), w)
 	}
@@ -71,7 +73,7 @@ func handleCreateWorkflow(svc driving.WorkflowService) http.HandlerFunc {
 	}
 }
 
-func handleWorkflowBuilder(svc driving.WorkflowService, registry driving.NodeRegistryService) http.HandlerFunc {
+func handleWorkflowBuilder(svc driving.WorkflowService, registry driving.NodeRegistryService, branding templates.Branding) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		session := GetSession(r)
 		if session == nil {
@@ -98,6 +100,7 @@ func handleWorkflowBuilder(svc driving.WorkflowService, registry driving.NodeReg
 			Username:        session.Username,
 			Workflow:        wf,
 			NodeDefinitions: nodes,
+			Branding:        branding,
 		}
 
 		// Sub-workflow navigation: parent context

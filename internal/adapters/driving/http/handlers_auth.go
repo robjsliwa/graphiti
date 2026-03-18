@@ -10,10 +10,11 @@ import (
 
 	"graphiti/internal/domain"
 	"graphiti/internal/ports/driven"
+	"graphiti/web/templates"
 	"graphiti/web/templates/pages"
 )
 
-func handleLogin(auth driven.AuthProvider, sessions *SessionStore) http.HandlerFunc {
+func handleLogin(auth driven.AuthProvider, sessions *SessionStore, branding templates.Branding) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// If already authenticated, redirect to dashboard
 		if sess, err := sessions.Get(r); err == nil && sess != nil {
@@ -31,7 +32,7 @@ func handleLogin(auth driven.AuthProvider, sessions *SessionStore) http.HandlerF
 		}
 
 		// For real OAuth, show login page with GitHub button
-		pages.LoginWithProvider(pages.LoginData{Provider: "github"}).Render(r.Context(), w)
+		pages.LoginWithProvider(pages.LoginData{Provider: "github", Branding: branding}).Render(r.Context(), w)
 	}
 }
 

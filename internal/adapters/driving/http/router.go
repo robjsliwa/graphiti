@@ -7,6 +7,7 @@ import (
 	"graphiti/internal/app"
 	"graphiti/internal/ports/driven"
 	"graphiti/internal/ports/driving"
+	"graphiti/web/templates"
 )
 
 // RouterDeps holds all dependencies needed by the HTTP router.
@@ -18,7 +19,10 @@ type RouterDeps struct {
 	UserRepo     driven.UserRepository
 	SessionStore *SessionStore
 	WSHub        *WebSocketHub
-	HMACSecret   string // for callback signature verification
+	HMACSecret       string // for callback signature verification
+	Branding         templates.Branding
+	FaviconFilePath  string // filesystem path to favicon file (for serving)
+	CustomCSSFilePath string // filesystem path to custom CSS file (for serving)
 }
 
 // NewRouter creates the HTTP handler with all routes configured.
@@ -31,8 +35,25 @@ func NewRouter(deps RouterDeps) http.Handler {
 	// Static files
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 
+	// Favicon (if configured)
+	if deps.FaviconFilePath != "" {
+		faviconPath := deps.FaviconFilePath
+		mux.HandleFunc("GET /favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFile(w, r, faviconPath)
+		})
+	}
+
+	// Custom CSS (if configured and outside /static/)
+	if deps.CustomCSSFilePath != "" {
+		cssFilePath := deps.CustomCSSFilePath
+		mux.HandleFunc("GET /branding/custom.css", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/css")
+			http.ServeFile(w, r, cssFilePath)
+		})
+	}
+
 	// Auth routes (with rate limiting, no session auth)
-	mux.Handle("GET /auth/login", authLimiter.RateLimitMiddleware(handleLogin(deps.AuthProvider, deps.SessionStore)))
+	mux.Handle("GET /auth/login", authLimiter.RateLimitMiddleware(handleLogin(deps.AuthProvider, deps.SessionStore, deps.Branding)))
 	mux.Handle("GET /auth/callback", authLimiter.RateLimitMiddleware(handleCallback(deps.AuthProvider, deps.UserRepo, deps.SessionStore)))
 	mux.HandleFunc("POST /auth/logout", handleLogout(deps.SessionStore))
 
@@ -43,9 +64,9 @@ func NewRouter(deps RouterDeps) http.Handler {
 
 	// Protected routes - wrap in auth middleware
 	protected := http.NewServeMux()
-	protected.HandleFunc("GET /", handleDashboard(deps.WorkflowSvc))
+	protected.HandleFunc("GET /", handleDashboard(deps.WorkflowSvc, deps.Branding))
 	protected.HandleFunc("POST /workflows", handleCreateWorkflow(deps.WorkflowSvc))
-	protected.HandleFunc("GET /workflows/{id}", handleWorkflowBuilder(deps.WorkflowSvc, deps.NodeRegistry))
+	protected.HandleFunc("GET /workflows/{id}", handleWorkflowBuilder(deps.WorkflowSvc, deps.NodeRegistry, deps.Branding))
 	protected.HandleFunc("DELETE /workflows/{id}", handleDeleteWorkflow(deps.WorkflowSvc))
 	protected.HandleFunc("PATCH /api/workflows/{id}/name", handleRenameWorkflow(deps.WorkflowSvc))
 

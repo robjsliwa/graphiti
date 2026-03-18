@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"graphiti/internal/domain"
+	"graphiti/web/templates"
 	"graphiti/web/templates/layouts"
 	"graphiti/web/templates/partials"
 	"graphiti/web/templates/svg"
@@ -24,6 +25,7 @@ type BuilderData struct {
 	ParentWorkflowID   string
 	ParentWorkflowName string
 	ParentNodeID       string
+	Branding           templates.Branding
 }
 
 func Builder(data BuilderData) templ.Component {
@@ -63,96 +65,109 @@ func Builder(data BuilderData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = partials.Logo(36).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = partials.BrandedLogo(data.Branding.LogoSVG, 36).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<span class=\"nav-title\">Graphiti</span></div><div class=\"nav-breadcrumb\"><a href=\"/\">Workflows</a> / ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<span class=\"nav-title\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var3 string
+			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(data.Branding.AppName)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 28, Col: 51}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</span></div><div class=\"nav-breadcrumb\"><a href=\"/\">Workflows</a> / ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if data.ParentWorkflowID != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<a href=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<a href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var3 templ.SafeURL
-				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/workflows/" + data.ParentWorkflowID))
+				var templ_7745c5c3_Var4 templ.SafeURL
+				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/workflows/" + data.ParentWorkflowID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 31, Col: 67}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" class=\"breadcrumb-parent\" title=\"Back to parent workflow\">")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var4 string
-				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(data.ParentWorkflowName)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 32, Col: 31}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 33, Col: 67}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</a> <span class=\"breadcrumb-separator\">/</span> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" class=\"breadcrumb-parent\" title=\"Back to parent workflow\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var5 string
+				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(data.ParentWorkflowName)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 34, Col: 31}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</a> <span class=\"breadcrumb-separator\">/</span> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<span x-data=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var5 string
-			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs("{ editing: false, name: '" + jsEscape(data.Workflow.Name) + "', original: '" + jsEscape(data.Workflow.Name) + "' }")
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 36, Col: 135}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" @click=\"if (!editing) { editing = true; $nextTick(() => { $refs.nameInput.focus(); $refs.nameInput.select(); }) }\" class=\"breadcrumb-name\"><span x-show=\"!editing\" x-text=\"name\" style=\"cursor: pointer;\" title=\"Click to rename\"></span> <input x-show=\"editing\" x-ref=\"nameInput\" x-model=\"name\" x-cloak @blur=\"editing = false; if (name.trim() && name !== original) { original = name; htmx.ajax('PATCH', '/api/workflows/' + document.getElementById('graphiti-data').dataset.workflowId + '/name', {values: {name: name.trim()}, swap: 'none'}) } else if (!name.trim()) { name = original }\" @keydown.enter=\"$refs.nameInput.blur()\" @keydown.escape=\"name = original; editing = false\" class=\"breadcrumb-edit-input\"></span> ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			if data.ParentWorkflowID != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<span class=\"breadcrumb-badge\">(sub-workflow)</span>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</div><div class=\"nav-actions\"><span class=\"version-badge\">v")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<span x-data=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var6 string
-			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(itoa(data.Workflow.Version))
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs("{ editing: false, name: '" + jsEscape(data.Workflow.Name) + "', original: '" + jsEscape(data.Workflow.Name) + "' }")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 51, Col: 62}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 38, Col: 135}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</span> <button class=\"btn btn-icon\" id=\"theme-toggle\" title=\"Toggle theme\" @click=\"themeMode = themeMode === 'light' ? 'dark' : (themeMode === 'dark' ? 'system' : 'light')\" x-text=\"themeMode === 'light' ? '\\u2600' : (themeMode === 'dark' ? '\\u263E' : '\\u2699')\" :aria-label=\"'Theme: ' + themeMode + '. Click to switch.'\">&#x2699;</button><div class=\"deploy-dropdown\" x-data=\"deployManager\" @click.outside=\"menuOpen = false\"><button class=\"btn btn-success\" id=\"deploy-btn\" :disabled=\"isDeploying\" :class=\"{ 'deploy-success': deployStatus === 'success', 'deploy-error': deployStatus === 'error' }\" x-text=\"isDeploying ? 'Deploying...' : (deployStatus === 'success' ? '\\u2713 Deployed' : 'Deploy')\" @click=\"deploy('production')\">Deploy</button> <button class=\"btn btn-success deploy-chevron\" title=\"Deploy options\" @click.stop=\"menuOpen = !menuOpen\">&#x25BE;</button><div class=\"deploy-menu\" x-show=\"menuOpen\" x-cloak @click.stop><button class=\"deploy-menu-item\" @click=\"deploy('production'); menuOpen = false\">Deploy to Production</button> <button class=\"deploy-menu-item\" @click=\"deploy('staging'); menuOpen = false\">Deploy to Staging</button><hr><button class=\"deploy-menu-item\" @click=\"toast.info('Workflow is auto-saved'); menuOpen = false\">Save as Draft</button><hr><button class=\"deploy-menu-item\" @click=\"exportWf('yaml'); menuOpen = false\">Export as YAML</button> <button class=\"deploy-menu-item\" @click=\"exportWf('json'); menuOpen = false\">Export as JSON</button></div></div><span class=\"nav-user\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" @click=\"if (!editing) { editing = true; $nextTick(() => { $refs.nameInput.focus(); $refs.nameInput.select(); }) }\" class=\"breadcrumb-name\"><span x-show=\"!editing\" x-text=\"name\" style=\"cursor: pointer;\" title=\"Click to rename\"></span> <input x-show=\"editing\" x-ref=\"nameInput\" x-model=\"name\" x-cloak @blur=\"editing = false; if (name.trim() && name !== original) { original = name; htmx.ajax('PATCH', '/api/workflows/' + document.getElementById('graphiti-data').dataset.workflowId + '/name', {values: {name: name.trim()}, swap: 'none'}) } else if (!name.trim()) { name = original }\" @keydown.enter=\"$refs.nameInput.blur()\" @keydown.escape=\"name = original; editing = false\" class=\"breadcrumb-edit-input\"></span> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if data.ParentWorkflowID != "" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<span class=\"breadcrumb-badge\">(sub-workflow)</span>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</div><div class=\"nav-actions\"><span class=\"version-badge\">v")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var7 string
-			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(data.Username)
+			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(itoa(data.Workflow.Version))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 79, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 53, Col: 62}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</span></div></nav><div x-data=\"executionMode\"><div class=\"mode-tabs\"><button class=\"mode-tab\" :class=\"{ active: mode === 'builder' }\" @click=\"setMode('builder')\">Builder</button> <button class=\"mode-tab\" :class=\"{ active: mode === 'execution' }\" @click=\"setMode('execution')\">Execution</button></div><div class=\"builder-layout\"><aside class=\"panel panel-left\" id=\"palette-panel\"><div id=\"panel-left-builder\" x-show=\"mode === 'builder'\"><div class=\"panel-header\"><h2>Components</h2><input type=\"search\" placeholder=\"Search nodes...\" class=\"search-input\" name=\"q\" hx-get=\"/api/nodes/search\" hx-trigger=\"keyup changed delay:200ms\" hx-target=\"#node-palette\"></div><div id=\"node-palette\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</span> <button class=\"btn btn-icon\" id=\"theme-toggle\" title=\"Toggle theme\" @click=\"themeMode = themeMode === 'light' ? 'dark' : (themeMode === 'dark' ? 'system' : 'light')\" x-text=\"themeMode === 'light' ? '\\u2600' : (themeMode === 'dark' ? '\\u263E' : '\\u2699')\" :aria-label=\"'Theme: ' + themeMode + '. Click to switch.'\">&#x2699;</button><div class=\"deploy-dropdown\" x-data=\"deployManager\" @click.outside=\"menuOpen = false\"><button class=\"btn btn-success\" id=\"deploy-btn\" :disabled=\"isDeploying\" :class=\"{ 'deploy-success': deployStatus === 'success', 'deploy-error': deployStatus === 'error' }\" x-text=\"isDeploying ? 'Deploying...' : (deployStatus === 'success' ? '\\u2713 Deployed' : 'Deploy')\" @click=\"deploy('production')\">Deploy</button> <button class=\"btn btn-success deploy-chevron\" title=\"Deploy options\" @click.stop=\"menuOpen = !menuOpen\">&#x25BE;</button><div class=\"deploy-menu\" x-show=\"menuOpen\" x-cloak @click.stop><button class=\"deploy-menu-item\" @click=\"deploy('production'); menuOpen = false\">Deploy to Production</button> <button class=\"deploy-menu-item\" @click=\"deploy('staging'); menuOpen = false\">Deploy to Staging</button><hr><button class=\"deploy-menu-item\" @click=\"toast.info('Workflow is auto-saved'); menuOpen = false\">Save as Draft</button><hr><button class=\"deploy-menu-item\" @click=\"exportWf('yaml'); menuOpen = false\">Export as YAML</button> <button class=\"deploy-menu-item\" @click=\"exportWf('json'); menuOpen = false\">Export as JSON</button></div></div><span class=\"nav-user\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var8 string
+			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(data.Username)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 81, Col: 42}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</span></div></nav><div x-data=\"executionMode\"><div class=\"mode-tabs\"><button class=\"mode-tab\" :class=\"{ active: mode === 'builder' }\" @click=\"setMode('builder')\">Builder</button> <button class=\"mode-tab\" :class=\"{ active: mode === 'execution' }\" @click=\"setMode('execution')\">Execution</button></div><div class=\"builder-layout\"><aside class=\"panel panel-left\" id=\"palette-panel\"><div id=\"panel-left-builder\" x-show=\"mode === 'builder'\"><div class=\"panel-header\"><h2>Components</h2><input type=\"search\" placeholder=\"Search nodes...\" class=\"search-input\" name=\"q\" hx-get=\"/api/nodes/search\" hx-trigger=\"keyup changed delay:200ms\" hx-target=\"#node-palette\"></div><div id=\"node-palette\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -160,20 +175,20 @@ func Builder(data BuilderData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div></div><div id=\"panel-left-execution\" x-show=\"mode === 'execution'\" x-cloak><div class=\"panel-header\"><h2>Run History</h2></div><div id=\"execution-run-list\" hx-get=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</div></div><div id=\"panel-left-execution\" x-show=\"mode === 'execution'\" x-cloak><div class=\"panel-header\"><h2>Run History</h2></div><div id=\"execution-run-list\" hx-get=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var8 string
-			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs("/api/workflows/" + data.Workflow.ID + "/runs")
+			var templ_7745c5c3_Var9 string
+			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs("/api/workflows/" + data.Workflow.ID + "/runs")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 113, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 115, Col: 61}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" hx-trigger=\"load\" hx-swap=\"innerHTML\"><div class=\"loading\">Loading runs...</div></div></div></aside><main class=\"canvas-container\" id=\"canvas-container\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\" hx-trigger=\"load\" hx-swap=\"innerHTML\"><div class=\"loading\">Loading runs...</div></div></div></aside><main class=\"canvas-container\" id=\"canvas-container\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -181,62 +196,62 @@ func Builder(data BuilderData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<div x-data=\"canvasContextMenu\" x-show=\"open\" x-cloak class=\"context-menu\" :style=\"'left:' + x + 'px; top:' + y + 'px'\" @click.outside=\"open = false\" @keydown.escape.window=\"open = false\"><button class=\"context-menu-item\" @click=\"deleteEdge()\">Delete connection</button></div><div class=\"canvas-hud\"><div class=\"zoom-controls\"><button class=\"btn btn-icon\" id=\"zoom-out\" title=\"Zoom out\">-</button> <span id=\"zoom-level\">100%</span> <button class=\"btn btn-icon\" id=\"zoom-in\" title=\"Zoom in\">+</button> <button class=\"btn btn-icon\" id=\"zoom-fit\" title=\"Fit to view\">Fit</button></div><div class=\"undo-redo\" id=\"undo-redo-controls\"><button class=\"btn btn-icon\" id=\"undo-btn\" title=\"Undo (Ctrl+Z)\" disabled>&#x21A9;</button> <button class=\"btn btn-icon\" id=\"redo-btn\" title=\"Redo (Ctrl+Shift+Z)\" disabled>&#x21AA;</button></div></div></main><aside class=\"panel panel-right\" id=\"config-panel\"><div class=\"panel-header\"><h2>Configuration</h2></div><div class=\"panel-body\" id=\"config-content\"><div class=\"empty-config\"><p>Select a node to configure</p></div></div></aside></div></div><div id=\"graphiti-data\" data-workflow-id=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div x-data=\"canvasContextMenu\" x-show=\"open\" x-cloak class=\"context-menu\" :style=\"'left:' + x + 'px; top:' + y + 'px'\" @click.outside=\"open = false\" @keydown.escape.window=\"open = false\"><button class=\"context-menu-item\" @click=\"deleteEdge()\">Delete connection</button></div><div class=\"canvas-hud\"><div class=\"zoom-controls\"><button class=\"btn btn-icon\" id=\"zoom-out\" title=\"Zoom out\">-</button> <span id=\"zoom-level\">100%</span> <button class=\"btn btn-icon\" id=\"zoom-in\" title=\"Zoom in\">+</button> <button class=\"btn btn-icon\" id=\"zoom-fit\" title=\"Fit to view\">Fit</button></div><div class=\"undo-redo\" id=\"undo-redo-controls\"><button class=\"btn btn-icon\" id=\"undo-btn\" title=\"Undo (Ctrl+Z)\" disabled>&#x21A9;</button> <button class=\"btn btn-icon\" id=\"redo-btn\" title=\"Redo (Ctrl+Shift+Z)\" disabled>&#x21AA;</button></div></div></main><aside class=\"panel panel-right\" id=\"config-panel\"><div class=\"panel-header\"><h2>Configuration</h2></div><div class=\"panel-body\" id=\"config-content\"><div class=\"empty-config\"><p>Select a node to configure</p></div></div></aside></div></div><div id=\"graphiti-data\" data-workflow-id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var9 string
-			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(data.Workflow.ID)
+			var templ_7745c5c3_Var10 string
+			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(data.Workflow.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 155, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 157, Col: 61}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\" hidden></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" hidden></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if data.ParentWorkflowID != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div id=\"graphiti-parent-data\" data-parent-workflow-id=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var10 string
-				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(data.ParentWorkflowID)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 157, Col: 81}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" data-parent-node-id=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<div id=\"graphiti-parent-data\" data-parent-workflow-id=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var11 string
-				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(data.ParentNodeID)
+				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(data.ParentWorkflowID)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 157, Col: 123}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 159, Col: 81}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" hidden></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" data-parent-node-id=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var12 string
+				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(data.ParentNodeID)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 159, Col: 123}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\" hidden></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, " <!-- Live region for screen reader announcements --> <div id=\"sr-announcements\" aria-live=\"polite\" aria-atomic=\"true\" class=\"sr-only\"></div><script src=\"/static/js/components.js\"></script> <script type=\"module\" src=\"/static/js/app.js\"></script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, " <!-- Live region for screen reader announcements --> <div id=\"sr-announcements\" aria-live=\"polite\" aria-atomic=\"true\" class=\"sr-only\"></div><script src=\"/static/js/components.js\"></script> <script type=\"module\" src=\"/static/js/app.js\"></script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = layouts.Base(data.Workflow.Name).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layouts.Base(data.Workflow.Name, data.Branding).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

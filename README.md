@@ -327,6 +327,81 @@ The theme toggle button (top-right of every page) cycles through three modes:
 
 The selected mode is persisted to `localStorage` and applied instantly on page load.
 
+### White-Label / Custom Branding
+
+Graphiti supports white-labeling for organizations that want to customize the name, logo, colors, and other branding without forking the codebase. All branding is controlled via the `branding` section in `config/app.yaml`.
+
+#### Full Configuration Reference
+
+```yaml
+branding:
+  appName: "Graphiti"                    # Displayed in nav bar, login page heading, page titles
+  tagline: "Visual Workflow Builder"     # Login page subtitle
+  titleSuffix: "Graphiti"               # Browser tab: "{page} - {suffix}"
+  logo:
+    svg: ""                              # Inline SVG string (takes priority over path)
+    path: ""                             # File path to an SVG file, read at startup
+  favicon: ""                            # File path to favicon, served at /favicon.ico
+  themeStorageKey: "graphiti-theme"       # localStorage key for theme preference
+                                         # (change to avoid collisions if running multiple instances)
+  colors:
+    accentLight: ""                      # Override --accent in light theme
+    accentHoverLight: ""                 # Override --accent-hover in light theme
+    accentDark: ""                       # Override --accent in dark theme
+    accentHoverDark: ""                  # Override --accent-hover in dark theme
+  customCSS: ""                          # Path to an additional CSS stylesheet loaded after all built-in styles
+```
+
+#### Minimal Example
+
+Just customize the name and accent color:
+
+```yaml
+branding:
+  appName: "Acme Workflows"
+  tagline: "Internal Pipeline Builder"
+  colors:
+    accentLight: "#E11D48"
+    accentHoverLight: "#BE123C"
+```
+
+#### Full Example
+
+All options including custom logo, favicon, and CSS:
+
+```yaml
+branding:
+  appName: "Acme Workflows"
+  tagline: "Internal Pipeline Builder"
+  titleSuffix: "Acme"
+  logo:
+    path: "./config/branding/acme-logo.svg"
+  favicon: "./config/branding/favicon.ico"
+  themeStorageKey: "acme-theme"
+  colors:
+    accentLight: "#E11D48"
+    accentHoverLight: "#BE123C"
+    accentDark: "#FB7185"
+    accentHoverDark: "#F43F5E"
+  customCSS: "./config/branding/custom.css"
+```
+
+#### Custom Logo Guidelines
+
+- Must be a valid SVG with a `viewBox` attribute
+- Recommended viewBox of `0 0 500 500` for consistency
+- Rendered at 36px in the nav bar and 64px on the login page
+- Inline SVG via `logo.svg` takes priority over `logo.path`
+- **Security note:** Logo SVG is rendered unescaped into the page. Only use trusted SVG content — do not accept SVG from untrusted sources as it may contain embedded scripts
+
+#### Custom CSS
+
+The custom stylesheet loads last, so it can override any built-in CSS variable or rule. Key CSS custom properties available for override include all variables defined in the theme files (`--bg`, `--surface`, `--text`, `--accent`, `--accent-hover`, `--border`, etc.). See `web/static/css/themes/light.css` and `dark.css` for the full list.
+
+#### Behavior When Unconfigured
+
+Omitting the `branding:` section entirely (or leaving fields empty) preserves the default Graphiti branding. Every field falls back gracefully — zero configuration means the current Graphiti look and feel.
+
 ### Sub-Workflows
 
 Sub-workflows let you compose workflows by referencing other workflows as reusable building blocks. This is the key to managing complexity — instead of one giant workflow, you break logic into smaller, testable pieces and wire them together.

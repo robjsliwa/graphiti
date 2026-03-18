@@ -2,6 +2,7 @@ package pages
 
 import (
 	"graphiti/internal/domain"
+	"graphiti/web/templates"
 	"graphiti/web/templates/layouts"
 	"graphiti/web/templates/partials"
 )
@@ -9,14 +10,15 @@ import (
 type DashboardData struct {
 	Username  string
 	Workflows []*domain.WorkflowSummary
+	Branding  templates.Branding
 }
 
 templ Dashboard(data DashboardData) {
-	@layouts.Base("Dashboard") {
+	@layouts.Base("Dashboard", data.Branding) {
 		<nav class="top-nav">
 			<div class="nav-brand">
-				@partials.Logo(36)
-				<span class="nav-title">Graphiti</span>
+				@partials.BrandedLogo(data.Branding.LogoSVG, 36)
+				<span class="nav-title">{ data.Branding.AppName }</span>
 			</div>
 			<div class="nav-breadcrumb">/ Workflows</div>
 			<div class="nav-actions">
