@@ -5577,6 +5577,473 @@ curl -X POST http://localhost:8080/api/todos \
 - [ ] The guide cross-references the two example directories for working reference code
 - [ ] A diagram shows the architectural difference between standalone (3 processes) and embedded (1 process)
 
+### Story 7.8: Package-Level Documentation (doc.go Files)
+
+**What:** Write `doc.go` files for every public package in the library. These are the "front door" of the documentation. When someone lands on pkg.go.dev or runs `go doc graphiti`, this is what they see first. Each `doc.go` contains only a package comment and the package declaration, nothing else.
+
+Go's convention is that the package comment is a complete, well-structured introduction. It starts with "Package [name]..." and gives enough context for a developer to decide whether this package solves their problem.
+
+**Files to create:**
+
+```go
+// doc.go (package root)
+
+// Package graphiti provides an embeddable visual workflow builder UI.
+//
+// Graphiti lets users design directed workflow graphs through a browser-based
+// canvas, then deploy the resulting definitions to an execution engine.
+// It can run as a standalone service or be embedded into a Go application
+// as a library.
+//
+// # Quick Start (Standalone)
+//
+// Run the pre-built server:
+//
+//	go run github.com/graphiti/graphiti/cmd/server@latest
+//
+// # Quick Start (Embedded Library)
+//
+// Mount Graphiti into your own HTTP server:
+//
+//	app, err := graphiti.New(graphiti.Config{
+//	    BasePath: "/workflows",
+//	}, graphiti.Deps{
+//	    WorkflowRepo: myWorkflowRepo,
+//	    UserRepo:     myUserRepo,
+//	    AuthProvider: myAuthProvider,
+//	})
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	http.Handle("/workflows/", app.Handler())
+//
+// # Architecture
+//
+// Graphiti uses hexagonal architecture. The host application provides
+// driven adapters (storage, auth, deploy targets) through the [Deps] struct.
+// Graphiti provides the domain logic, UI, and HTTP handlers.
+//
+// All repository interfaces are defined in the ports/driven subpackage.
+// Reference implementations for SQLite and in-memory storage are included.
+//
+// # Node Definitions
+//
+// Workflow node types are defined in YAML configuration files, not in Go code.
+// See the config/nodes/ directory for examples, or provide your own via
+// [Config.NodeDefinitionsPath].
+//
+// # Execution Integration
+//
+// Graphiti communicates with execution engines in two ways:
+//
+//   - Standalone mode: versioned webhook payloads (see [Deps.DeployTarget])
+//   - Embedded mode: direct function calls (see the inprocess adapter)
+//
+// For live execution status updates, use [App.ReportNodeStatus] in embedded
+// mode or POST to /api/callbacks/execution in standalone mode.
+package graphiti
+```
+
+```go
+// internal/domain/doc.go
+
+// Package domain contains the core business logic for Graphiti.
+//
+// This package has zero external dependencies. It imports only from the
+// Go standard library. All workflow operations, validation rules,
+// command pattern implementations, and clipboard logic live here.
+//
+// Domain types are pure value objects and aggregates. They know nothing
+// about HTTP, databases, or the UI layer.
+//
+// # Key Types
+//
+//   - [Workflow]: the aggregate root representing a complete workflow graph
+//   - [NodeDefinition]: a YAML-driven declaration of a node type
+//   - [NodeInstance]: a placed node on a canvas with configured attributes
+//   - [Edge]: a connection between two ports
+//   - [Command]: the interface for all canvas mutations (undo/redo)
+//   - [CommandHistory]: the undo/redo stack
+//   - [ValidationResult]: structured output from workflow validation
+package domain
+```
+
+```go
+// internal/ports/driven/doc.go
+
+// Package driven defines the interfaces that external adapters must implement
+// to provide storage, authentication, and deployment capabilities to Graphiti.
+//
+// These are the "right side" of the hexagonal architecture: they represent
+// what Graphiti needs from the outside world. The host application provides
+// concrete implementations when calling [graphiti.New].
+//
+// Reference implementations are available in the adapters subpackages:
+//
+//   - SQLite: github.com/graphiti/graphiti/internal/adapters/driven/sqlite
+//   - In-memory: github.com/graphiti/graphiti/internal/adapters/driven/memory
+//   - Filesystem (YAML loader): github.com/graphiti/graphiti/internal/adapters/driven/filesystem
+//   - Webhook deploy: github.com/graphiti/graphiti/internal/adapters/driven/webhook
+//   - In-process deploy: github.com/graphiti/graphiti/internal/adapters/driven/inprocess
+//   - Fake auth (dev): github.com/graphiti/graphiti/internal/adapters/driven/auth
+//   - GitHub OAuth2: github.com/graphiti/graphiti/internal/adapters/driven/auth
+package driven
+```
+
+```go
+// internal/ports/driving/doc.go
+
+// Package driving defines the use case interfaces that Graphiti's HTTP
+// handlers and WebSocket hub call into.
+//
+// These are the "left side" of the hexagonal architecture: they represent
+// what the outside world can ask Graphiti to do. In embedded mode, the host
+// application can also call these directly via [graphiti.App.Services].
+package driving
+```
+
+**Acceptance Criteria:**
+
+- [ ] Every public and internal package has a `doc.go` file
+- [ ] Every package comment starts with "Package [name]" followed by a verb (Go convention)
+- [ ] The root package `doc.go` includes Quick Start examples for both standalone and embedded modes
+- [ ] The root package `doc.go` uses Go doc comment headings (`# Quick Start`, `# Architecture`, etc.)
+- [ ] The domain package `doc.go` lists key types using doc links (`[Workflow]`, `[Command]`, etc.)
+- [ ] The driven ports `doc.go` lists available adapter implementations with full import paths
+- [ ] All `doc.go` files contain only the package comment and `package` declaration, no code
+- [ ] Running `go doc graphiti` prints a clear, readable summary
+- [ ] Running `go doc graphiti.New` prints the function signature and its doc comment
+- [ ] Running `go doc graphiti.Config` prints all fields with their comments
+- [ ] All package comments pass `go vet` with no warnings
+
+### Story 7.9: Godoc Comments on All Exported Types, Functions, and Methods
+
+**What:** Write complete godoc comments on every exported symbol in the library's public API surface. Every type, function, method, constant, and variable that a library consumer might touch gets a doc comment that starts with the symbol's name as a complete sentence.
+
+**Conventions to follow (from Go's official doc comment spec):**
+
+- Every comment starts with the name of the thing it describes: `// Config controls how the embedded Graphiti instance behaves.`
+- Use complete sentences with proper punctuation
+- Use doc links to reference other types: `// See [Config] for available options.`
+- Use headings for multi-section comments: `// # Concurrency`
+- Use indented blocks for code examples in comments
+- Mark deprecated items with `// Deprecated: use [NewThing] instead.`
+
+**Scope:** This covers the public API surface only. Internal packages get basic comments (covered in Story 7.8) but don't need the same level of polish since they're not visible on pkg.go.dev.
+
+**Key types that need thorough documentation:**
+
+```go
+// Config controls how the embedded Graphiti instance behaves.
+//
+// All fields are optional. Zero values provide sensible defaults:
+// BasePath defaults to "/", node definitions use the embedded default set,
+// and the undo stack holds 100 entries.
+type Config struct {
+    // BasePath is the URL prefix where Graphiti is mounted on the host's router.
+    // All Graphiti routes (dashboard, builder, API) are served under this prefix.
+    //
+    // Examples:
+    //   - "/" serves the dashboard at the root
+    //   - "/graphiti" serves the dashboard at /graphiti/ and API at /graphiti/api/...
+    //   - "/admin/workflows" nests Graphiti under an admin section
+    //
+    // The path must start with "/" and must not end with "/" (except for root).
+    // Default: "/"
+    BasePath string
+
+    // NodeDefinitionsPath is the filesystem path to a directory containing
+    // YAML node definition files. Graphiti walks this directory recursively
+    // and loads every .yaml file it finds.
+    //
+    // If empty, Graphiti uses its embedded default node definitions, which
+    // include common source, processing, destination, and control flow types.
+    //
+    // See the config/nodes/ directory in the Graphiti repository for the
+    // expected file format and directory structure.
+    NodeDefinitionsPath string
+
+    // ...
+}
+
+// Deps holds the interfaces the host application must provide.
+//
+// Graphiti never creates its own database connections or auth sessions.
+// The host application owns these concerns and passes implementations
+// through this struct.
+//
+// Required fields are [Deps.WorkflowRepo], [Deps.UserRepo], and
+// [Deps.AuthProvider]. Optional fields disable features when nil:
+// a nil [Deps.ExecutionRepo] hides execution mode, and a nil
+// [Deps.DeployTarget] hides the deploy button.
+type Deps struct { ... }
+
+// New creates a new Graphiti [App] from the given configuration and
+// dependencies.
+//
+// New initializes the node registry, compiles templates, embeds static
+// assets, and builds the HTTP handler tree. It does not start a server
+// or listen on any port. The caller controls the server lifecycle.
+//
+// Returns an error if required dependencies are nil or if node definition
+// loading fails.
+//
+// # Example
+//
+//	app, err := graphiti.New(graphiti.Config{
+//	    BasePath: "/workflows",
+//	}, graphiti.Deps{
+//	    WorkflowRepo: sqlite.NewWorkflowRepo(db),
+//	    UserRepo:     sqlite.NewUserRepo(db),
+//	    AuthProvider: auth.NewFakeAuth(),
+//	})
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	router.Mount("/workflows", app.Handler())
+func New(cfg Config, deps Deps) (*App, error) { ... }
+```
+
+**Acceptance Criteria:**
+
+- [ ] Every exported type in the `graphiti` package has a doc comment starting with the type name
+- [ ] Every exported function and method has a doc comment starting with the function/method name
+- [ ] Every exported struct field has an inline or preceding comment explaining its purpose
+- [ ] Every exported constant and variable has a doc comment
+- [ ] Comments use doc links (`[Config]`, `[Deps.WorkflowRepo]`) to cross-reference related types
+- [ ] The `New` function's comment includes a code example in indented block format
+- [ ] The `Handler` method's comment shows mounting examples for chi, stdlib mux, and echo
+- [ ] All port interfaces (`WorkflowRepository`, `AuthProvider`, `DeployTarget`, etc.) have method-level comments explaining the contract, expected behavior, and error conditions
+- [ ] No exported symbol is undocumented (verified by running `go vet` and checking for missing comments)
+- [ ] Running `pkgsite` locally renders all documentation correctly with working doc links
+- [ ] Comments use the Go doc comment heading syntax (`# Heading`) where appropriate for multi-section docs
+
+### Story 7.10: Testable Examples (example_test.go)
+
+**What:** Write `Example` functions that serve as both documentation and executable tests. These appear in the "Example" section on pkg.go.dev and are compiled and run by `go test`. They're the single most effective form of Go library documentation because they're guaranteed to stay correct (they break the build if they drift).
+
+**Files to create:**
+
+```go
+// example_test.go (package root)
+package graphiti_test
+
+import (
+    "fmt"
+    "log"
+    "net/http"
+    "net/http/httptest"
+
+    "github.com/graphiti/graphiti"
+    "github.com/graphiti/graphiti/internal/adapters/driven/auth"
+    "github.com/graphiti/graphiti/internal/adapters/driven/memory"
+)
+
+func ExampleNew() {
+    app, err := graphiti.New(graphiti.Config{
+        BasePath: "/",
+    }, graphiti.Deps{
+        WorkflowRepo: memory.NewWorkflowRepo(),
+        UserRepo:     memory.NewUserRepo(),
+        AuthProvider: auth.NewFakeAuth(),
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Verify the handler responds to the dashboard route
+    req := httptest.NewRequest("GET", "/", nil)
+    w := httptest.NewRecorder()
+    app.Handler().ServeHTTP(w, req)
+
+    fmt.Println(w.Code)
+    // Output: 200
+}
+
+func ExampleNew_withBasePath() {
+    app, err := graphiti.New(graphiti.Config{
+        BasePath: "/admin/workflows",
+    }, graphiti.Deps{
+        WorkflowRepo: memory.NewWorkflowRepo(),
+        UserRepo:     memory.NewUserRepo(),
+        AuthProvider: auth.NewFakeAuth(),
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    mux := http.NewServeMux()
+    mux.Handle("/admin/workflows/", app.Handler())
+
+    req := httptest.NewRequest("GET", "/admin/workflows/", nil)
+    w := httptest.NewRecorder()
+    mux.ServeHTTP(w, req)
+
+    fmt.Println(w.Code)
+    // Output: 200
+}
+
+func ExampleApp_Services() {
+    app, _ := graphiti.New(graphiti.Config{}, graphiti.Deps{
+        WorkflowRepo: memory.NewWorkflowRepo(),
+        UserRepo:     memory.NewUserRepo(),
+        AuthProvider: auth.NewFakeAuth(),
+    })
+
+    // Use the services API to create a workflow programmatically
+    ctx := context.Background()
+    wf, err := app.Services().Workflows.CreateWorkflow(ctx, "My Pipeline", "A test workflow", "user-1")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    fmt.Println(wf.Name)
+    // Output: My Pipeline
+}
+
+func ExampleApp_ReportNodeStatus() {
+    app, _ := graphiti.New(graphiti.Config{}, graphiti.Deps{
+        WorkflowRepo:  memory.NewWorkflowRepo(),
+        UserRepo:      memory.NewUserRepo(),
+        AuthProvider:  auth.NewFakeAuth(),
+        ExecutionRepo: memory.NewExecutionRepo(),
+    })
+
+    now := time.Now()
+    err := app.ReportNodeStatus(context.Background(), graphiti.ExecutionUpdate{
+        RunID:      "run-001",
+        WorkflowID: "wf-001",
+        NodeID:     "node-001",
+        Status:     "completed",
+        CompletedAt: &now,
+        OutputSummary: map[string]any{"rowCount": 42},
+    })
+
+    fmt.Println(err)
+    // Output: <nil>
+}
+```
+
+```go
+// internal/domain/example_test.go
+package domain_test
+
+import (
+    "fmt"
+
+    "github.com/graphiti/graphiti/internal/domain"
+    "github.com/graphiti/graphiti/internal/domain/commands"
+)
+
+func ExampleCommandHistory_Execute() {
+    wf := &domain.Workflow{ID: "wf-1", Name: "Test"}
+    history := domain.NewCommandHistory(100)
+
+    cmd := &commands.AddNodeCommand{
+        DefinitionID: "source-api-gateway",
+        InstanceID:   "node-1",
+        X:            100,
+        Y:            200,
+    }
+
+    err := history.Execute(wf, cmd)
+    fmt.Println("Nodes after add:", len(wf.Nodes))
+    fmt.Println("Can undo:", history.CanUndo())
+
+    history.Undo(wf)
+    fmt.Println("Nodes after undo:", len(wf.Nodes))
+
+    fmt.Println(err)
+    // Output:
+    // Nodes after add: 1
+    // Can undo: true
+    // Nodes after undo: 0
+    // <nil>
+}
+
+func ExampleWorkflow_Validate() {
+    wf := &domain.Workflow{
+        ID:   "wf-1",
+        Name: "Test",
+        Nodes: []domain.NodeInstance{
+            {ID: "a", DefinitionID: "source-api-gateway"},
+            {ID: "b", DefinitionID: "destination-postgresql"},
+        },
+        // No edges: these nodes are disconnected
+    }
+
+    results := wf.Validate(mockRegistry)
+    for _, r := range results {
+        if r.Code == "DISCONNECTED_SUBGRAPH" {
+            fmt.Println(r.Severity, r.Code)
+        }
+    }
+    // Output:
+    // error DISCONNECTED_SUBGRAPH
+}
+```
+
+**Acceptance Criteria:**
+
+- [ ] `example_test.go` exists in the root package with examples for `New`, `New_withBasePath`, `App_Services`, and `App_ReportNodeStatus`
+- [ ] `internal/domain/example_test.go` exists with examples for `CommandHistory_Execute`, `Workflow_Validate`, and `ClipboardPayload` round-tripping
+- [ ] Every example function has an `// Output:` comment that makes it a verifiable test
+- [ ] All examples pass when running `go test ./...`
+- [ ] Examples use the `_test` package suffix (e.g., `package graphiti_test`) so they demonstrate the external consumer's perspective
+- [ ] Examples use realistic type names and values (not `foo`, `bar`, `test123`)
+- [ ] Running `pkgsite` locally shows the examples in the documentation with a "Run" button
+- [ ] Examples cover the two primary integration patterns: standalone (webhook deploy) and embedded (in-process deploy)
+- [ ] If any API signature changes in the future, the examples fail `go test`, catching documentation drift
+
+### Story 7.11: README and pkg.go.dev Badge
+
+**What:** Write a root `README.md` that serves as the GitHub landing page and links to the godoc documentation. Add the standard Go reference badge so visitors can jump to pkg.go.dev.
+
+This isn't a godoc concern per se, but it's the practical entry point that routes people to the godoc. Most Go developers discover a library on GitHub first, then click through to pkg.go.dev for the API reference.
+
+**README structure:**
+
+```markdown
+# Graphiti
+
+[![Go Reference](https://pkg.go.dev/badge/github.com/graphiti/graphiti.svg)](https://pkg.go.dev/github.com/graphiti/graphiti)
+[![Go Report Card](https://goreportcard.com/badge/github.com/graphiti/graphiti)](https://goreportcard.com/report/github.com/graphiti/graphiti)
+
+Visual workflow builder UI. Standalone or embeddable as a Go library.
+
+[screenshot / gif here]
+
+## Quick Start (Standalone)
+...
+
+## Quick Start (Library)
+...
+
+## Examples
+- [Standalone engine](./examples/standalone-engine/) ...
+- [Embedded engine](./examples/embedded-engine/) ...
+
+## Documentation
+- [API Reference (pkg.go.dev)](https://pkg.go.dev/github.com/graphiti/graphiti)
+- [Building an Engine](./docs/building-an-engine.md)
+- [Node Definition YAML Reference](./docs/node-definitions.md)
+
+## License
+...
+```
+
+**Acceptance Criteria:**
+
+- [ ] `README.md` includes the pkg.go.dev badge that links to the published documentation
+- [ ] `README.md` includes the Go Report Card badge
+- [ ] Quick Start sections for both standalone and library modes contain copy-pasteable code
+- [ ] Links to the two example directories with one-line descriptions of each
+- [ ] Links to the full API reference on pkg.go.dev
+- [ ] Links to the developer guide and node definition reference docs
+- [ ] The README doesn't duplicate the godoc content, it routes people to it
+- [ ] A `go.mod` with a proper module path (`github.com/graphiti/graphiti`) is in place so pkg.go.dev can index the module
+- [ ] After the first tagged release (`v0.1.0`), the package appears on pkg.go.dev with all documentation, examples, and doc links rendering correctly
+
 **Phase 7 Demo Checkpoint:**
 
 ```bash
