@@ -1001,6 +1001,279 @@ See [`config/app.yaml`](config/app.yaml) for server, storage, and deploy setting
 - [x] Validate button in toolbar for on-demand validation without deploying
 - [x] 35 validation codes across 6 categories (graph, edge, port, attribute, definition, subworkflow)
 
+### Phase 7: Embeddable Go Library — **Complete**
+
+- [x] Root-level `graphiti` package with `New(Config, Deps) (*App, error)` constructor
+- [x] `go:embed` for static assets, node definitions, themes, and migrations — zero filesystem dependency
+- [x] `App.Handler()` returns `http.Handler` for mounting in any existing router
+- [x] `App.Services()` exposes driving port interfaces for programmatic workflow management
+- [x] `App.ReportNodeStatus()` for in-process execution status reporting with WebSocket broadcast
+- [x] In-process deploy target adapter (`inprocess.NewDeployTarget`) — function call instead of HTTP webhook
+- [x] `EmbeddedNodeLoader` using `fs.FS` for loading YAML node definitions from embedded filesystems
+- [x] Router supports `fs.FS`-based static file serving with fallback to filesystem
+- [x] Exported `UserContextKey` for auth integration in host applications
+- [x] `cmd/server/main.go` refactored to use the library API as a thin wrapper
+- [x] Embedded engine example (`examples/embedded-engine/`) — single-binary Graphiti + echo engine
+- [x] Standalone engine example (`examples/standalone-engine/`) — separate service with webhook deploy
+- [x] Comprehensive Godoc documentation on all exported types, functions, and packages
+- [x] 4 testable `Example*` functions demonstrating library usage patterns
+- [x] Full test suite: 14 library API tests, 5 in-process deploy tests, 4 embedded loader tests
+
+## Using Graphiti as a Go Library
+
+Graphiti can be embedded directly into your Go application as a library, running in the same process. This gives you a visual workflow builder UI without deploying a separate service.
+
+### Installation
+
+```bash
+go get graphiti
+```
+
+### Minimal Example
+
+```go
+package main
+
+import (
+    "log"
+    "net/http"
+
+    "graphiti"
+    "graphiti/internal/adapters/driven/auth"
+    "graphiti/internal/adapters/driven/memory"
+)
+
+func main() {
+    app, err := graphiti.New(graphiti.Config{
+        BasePath: "/workflows",
+    }, graphiti.Deps{
+        WorkflowRepo: memory.NewWorkflowRepo(),
+        UserRepo:     memory.NewUserRepo(),
+        AuthProvider: auth.NewFakeAuth(),
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    mux := http.NewServeMux()
+    mux.Handle("/workflows/", app.Handler())
+    // Mount your own routes alongside Graphiti
+    mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
+        w.Write([]byte("ok"))
+    })
+
+    log.Println("Server running at http://localhost:8080")
+    log.Fatal(http.ListenAndServe(":8080", mux))
+}
+```
+
+### Config Reference
+
+The `graphiti.Config` struct controls Graphiti's behavior:
+
+```go
+graphiti.Config{
+    // BasePath records the URL prefix where Graphiti is mounted.
+    // Default: "/"
+    // Graphiti's internal routes always start at "/". To mount at a
+    // sub-path, use http.StripPrefix on the caller side:
+    //   mux.Handle("/workflows/", http.StripPrefix("/workflows", app.Handler()))
+    BasePath: "/",
+
+    // CommandHistoryMaxDepth controls undo/redo stack depth.
+    // Default: 100
+    CommandHistoryMaxDepth: 100,
+
+    // NodeDefinitionsPath loads YAML node definitions from the filesystem.
+    // If empty, embedded defaults are used (10 built-in node types).
+    NodeDefinitionsPath: "",
+
+    // Logger sets the structured logger for Graphiti.
+    // If nil, slog.Default() is used.
+    Logger: slog.New(slog.NewTextHandler(os.Stdout, nil)),
+}
+```
+
+### Dependencies (Deps)
+
+The `graphiti.Deps` struct provides the required and optional adapters:
+
+```go
+graphiti.Deps{
+    // Required: workflow persistence
+    WorkflowRepo: memory.NewWorkflowRepo(),      // or sqlite.NewWorkflowRepository(db)
+
+    // Required: user persistence
+    UserRepo: memory.NewUserRepo(),               // or sqlite.NewUserRepository(db)
+
+    // Required: authentication provider
+    AuthProvider: auth.NewFakeAuth(),              // or auth.NewGitHubAuth(cfg)
+
+    // Optional: execution run persistence (enables execution mode)
+    ExecutionRepo: memory.NewExecutionRepository(), // or sqlite.NewExecutionRepository(db)
+
+    // Optional: deploy target (enables Deploy button)
+    DeployTarget: deployTarget,                    // webhook or in-process
+
+    // Optional: custom node definition repository
+    // If nil, uses embedded defaults or NodeDefinitionsPath from Config
+    NodeDefRepo: customNodeRepo,
+}
+```
+
+**Required dependencies:** `WorkflowRepo`, `UserRepo`, and `AuthProvider` must always be provided. `New()` returns an error if any are missing.
+
+**Optional dependencies:** `ExecutionRepo`, `DeployTarget`, and `NodeDefRepo` are optional. Without `ExecutionRepo`, execution mode is unavailable. Without `DeployTarget`, the Deploy button is hidden. Without `NodeDefRepo`, built-in node definitions are loaded automatically.
+
+### Storage Options
+
+#### In-Memory (development/testing)
+
+```go
+import "graphiti/internal/adapters/driven/memory"
+
+workflowRepo := memory.NewWorkflowRepo()
+userRepo := memory.NewUserRepo()
+execRepo := memory.NewExecutionRepository()
+```
+
+In-memory repos are fast and require no setup, but data is lost when the process exits.
+
+#### SQLite (production)
+
+```go
+import "graphiti/internal/adapters/driven/sqlite"
+
+db, err := sql.Open("sqlite", "graphiti.db?_journal_mode=WAL")
+// Run migrations...
+
+workflowRepo := sqlite.NewWorkflowRepository(db)
+userRepo := sqlite.NewUserRepository(db)
+execRepo := sqlite.NewExecutionRepository(db)
+```
+
+### In-Process Deploy Target
+
+Instead of deploying via HTTP webhooks, use the in-process adapter to receive workflow deployments as direct function calls:
+
+```go
+import (
+    "graphiti/internal/adapters/driven/inprocess"
+    "graphiti/internal/domain"
+)
+
+deployTarget := inprocess.NewDeployTarget(
+    func(ctx context.Context, payload domain.DeployPayload) (*domain.DeployResult, error) {
+        // payload.Workflow contains the full workflow definition
+        // payload.Workflow.Name, .Version, .Definition (nodes + edges)
+        fmt.Printf("Deployed: %s v%d\n", payload.Workflow.Name, payload.Workflow.Version)
+
+        // Register the workflow in your engine, start execution, etc.
+        engine.Register(payload)
+
+        return &domain.DeployResult{
+            Success: true,
+            RunID:   uuid.New().String(),
+            Message: "Workflow registered",
+        }, nil
+    },
+)
+
+app, _ := graphiti.New(graphiti.Config{}, graphiti.Deps{
+    WorkflowRepo: workflowRepo,
+    UserRepo:     userRepo,
+    AuthProvider:  auth.NewFakeAuth(),
+    DeployTarget:  deployTarget,
+})
+```
+
+When the user clicks **Deploy** in the UI, your function is called directly — no HTTP, no webhook, no HMAC signing.
+
+### Reporting Execution Status
+
+Use `app.ReportNodeStatus()` to report node execution status back to Graphiti. This updates the execution run in the database and broadcasts the status via WebSocket to all connected UI clients, lighting up nodes in real time.
+
+```go
+now := time.Now()
+
+// Report a node as running
+app.ReportNodeStatus(ctx, graphiti.ExecutionUpdate{
+    RunID:      "run-001",
+    WorkflowID: "wf-001",
+    NodeID:     "node-transcribe-1",
+    Status:     "running",
+    StartedAt:  &now,
+})
+
+// Report a node as completed with output
+completed := time.Now()
+app.ReportNodeStatus(ctx, graphiti.ExecutionUpdate{
+    RunID:       "run-001",
+    WorkflowID:  "wf-001",
+    NodeID:      "node-transcribe-1",
+    Status:      "completed",
+    CompletedAt: &completed,
+    OutputSummary: map[string]any{
+        "transcription": "Hello, world!",
+        "confidence":    0.98,
+    },
+})
+```
+
+Valid status values: `"pending"`, `"running"`, `"completed"`, `"failed"`, `"skipped"`.
+
+### Programmatic Workflow Management
+
+Use `app.Services()` to create and manage workflows from code, without going through the HTTP API:
+
+```go
+svc := app.Services()
+
+// Create a workflow
+wf, err := svc.Workflows.CreateWorkflow(ctx, "My Pipeline", "A data processing pipeline", "user-1")
+
+// List all workflows
+workflows, err := svc.Workflows.ListWorkflows(ctx)
+
+// Get a specific workflow
+wf, err := svc.Workflows.GetWorkflow(ctx, workflowID)
+
+// Execute commands (add nodes, edges, etc.)
+result, err := svc.Workflows.ExecuteCommand(ctx, workflowID, commands.AddNodeCommand{
+    DefinitionID: "source-api-gateway",
+    X: 100, Y: 200,
+    InstanceID: uuid.New().String(),
+})
+```
+
+### Choosing Standalone vs Embedded Mode
+
+| Aspect | Standalone | Embedded |
+|--------|-----------|----------|
+| **Deployment** | Separate Graphiti binary + your engine | Single binary |
+| **Deploy mechanism** | HTTP webhook with HMAC signing | Direct function call |
+| **Status reporting** | HTTP callbacks to `/api/callbacks/execution` | `app.ReportNodeStatus()` |
+| **Auth** | Independent auth per service | Shared auth with host app |
+| **Configuration** | Webhook URLs, HMAC secrets, separate configs | `graphiti.Config{}` in Go |
+| **Scaling** | Scale Graphiti and engine independently | Scale together |
+| **Use when** | Multiple engines, team boundaries, polyglot | Single app, simple deploy, Go-only |
+
+### Complete Embedded Example
+
+See `examples/embedded-engine/` for a full working example that embeds Graphiti with an echo execution engine in a single binary. Run it with:
+
+```bash
+cd examples/embedded-engine
+go run .
+# Open http://localhost:8080
+```
+
+The example demonstrates:
+- Initializing Graphiti with in-memory storage and fake auth
+- In-process deploy target receiving workflow definitions directly
+- Simulated execution reporting status via `app.ReportNodeStatus()`
+- Combined HTTP server serving both Graphiti UI and engine endpoints
+
 ## Tech Stack
 
 | Layer | Technology |

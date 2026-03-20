@@ -10,14 +10,12 @@ import (
 	"syscall"
 	"time"
 
+	"graphiti"
 	"graphiti/internal/adapters/driven/auth"
-	"graphiti/internal/adapters/driven/filesystem"
 	"graphiti/internal/adapters/driven/memory"
 	"graphiti/internal/adapters/driven/sqlite"
 	"graphiti/internal/adapters/driven/webhook"
 	"graphiti/internal/adapters/driving/cli"
-	httpAdapter "graphiti/internal/adapters/driving/http"
-	"graphiti/internal/app"
 	"graphiti/internal/ports/driven"
 	"graphiti/web/templates"
 )
@@ -55,9 +53,6 @@ func main() {
 		execRepo = memory.NewExecutionRepository()
 	}
 
-	// Driven adapters: node definitions
-	nodeLoader := filesystem.NewNodeLoader(cfg.NodeDefinitions.Path, nil)
-
 	// Driven adapters: auth
 	var authAdapter driven.AuthProvider
 	switch cfg.Auth.Provider {
@@ -74,48 +69,21 @@ func main() {
 		slog.Info("using fake authentication (dev mode)")
 	}
 
-	// App services
-	nodeRegistry := app.NewNodeRegistry(nodeLoader)
-	if err := nodeRegistry.Load(context.Background()); err != nil {
-		slog.Error("failed to load node definitions", "error", err)
-		os.Exit(1)
-	}
-
-	workflowSvc := app.NewWorkflowService(workflowRepo, nodeRegistry, cfg.CommandHistory.MaxUndoDepth)
-	execSvc := app.NewExecutionService(execRepo)
-
-	// WebSocket hub
-	wsHub := httpAdapter.NewWebSocketHub()
-
-	// Wire WebSocket notifier to execution service
-	execSvc.SetNotifier(func(workflowID string, cb app.ExecutionCallback) {
-		wsHub.BroadcastToWorkflow(workflowID, httpAdapter.WebSocketMessage{
-			Type:   "node_status",
-			RunID:  cb.RunID,
-			NodeID: cb.NodeID,
-			Status: cb.Status,
-		})
-	})
-
-	// Wire deploy targets from config
+	// Driven adapters: deploy target
+	var deployTarget driven.DeployTarget
 	if cfg.Deploy.DefaultTarget != "" {
 		targetCfg, ok := cfg.Deploy.Targets[cfg.Deploy.DefaultTarget]
 		if ok && targetCfg.WebhookURL != "" {
-			deployTarget := webhook.NewWebhookDeployTarget(webhook.Config{
+			deployTarget = webhook.NewWebhookDeployTarget(webhook.Config{
 				URL:           targetCfg.WebhookURL,
 				HMACSecret:    cfg.Deploy.HMACSecret,
 				Timeout:       targetCfg.Timeout,
 				MaxRetries:    targetCfg.Retries,
 				StatusBaseURL: targetCfg.StatusBaseURL,
 			})
-			workflowSvc.SetDeployTarget(deployTarget)
 			slog.Info("deploy target configured", "target", cfg.Deploy.DefaultTarget, "url", targetCfg.WebhookURL)
 		}
 	}
-
-	// Session store
-	sessionMaxAge := time.Duration(cfg.Auth.Session.MaxAge) * time.Second
-	sessionStore := httpAdapter.NewSessionStore(cfg.Auth.Session.Secret, sessionMaxAge, cfg.Auth.Session.Secure)
 
 	// Resolve branding
 	branding := templates.Branding{
@@ -129,8 +97,6 @@ func main() {
 		AccentDark:       cfg.Branding.Colors.AccentDark,
 		AccentHoverDark:  cfg.Branding.Colors.AccentHoverDark,
 	}
-
-	// If logo SVG not inline but path is set, read from file
 	if branding.LogoSVG == "" && cfg.Branding.Logo.Path != "" {
 		logoData, err := os.ReadFile(cfg.Branding.Logo.Path)
 		if err != nil {
@@ -139,50 +105,47 @@ func main() {
 			branding.LogoSVG = string(logoData)
 		}
 	}
-
-	var faviconFilePath string
 	if cfg.Branding.Favicon != "" {
 		if info, err := os.Stat(cfg.Branding.Favicon); err != nil {
 			slog.Warn("favicon file not found, ignoring", "path", cfg.Branding.Favicon, "error", err)
-		} else if info.IsDir() {
-			slog.Warn("favicon path is a directory, ignoring", "path", cfg.Branding.Favicon)
-		} else {
-			faviconFilePath = cfg.Branding.Favicon
+		} else if !info.IsDir() {
 			branding.FaviconPath = "/favicon.ico"
 		}
 	}
-
-	var customCSSFilePath string
 	if cfg.Branding.CustomCSS != "" {
 		if info, err := os.Stat(cfg.Branding.CustomCSS); err != nil {
 			slog.Warn("custom CSS file not found, ignoring", "path", cfg.Branding.CustomCSS, "error", err)
-		} else if info.IsDir() {
-			slog.Warn("custom CSS path is a directory, ignoring", "path", cfg.Branding.CustomCSS)
-		} else {
-			customCSSFilePath = cfg.Branding.CustomCSS
+		} else if !info.IsDir() {
 			branding.CustomCSSPath = "/branding/custom.css"
 		}
 	}
 
-	// HTTP router
-	router := httpAdapter.NewRouter(httpAdapter.RouterDeps{
-		WorkflowSvc:       workflowSvc,
-		ExecutionSvc:      execSvc,
-		NodeRegistry:      nodeRegistry,
-		AuthProvider:      authAdapter,
-		UserRepo:          userRepo,
-		SessionStore:      sessionStore,
-		WSHub:             wsHub,
-		HMACSecret:        cfg.Deploy.HMACSecret,
-		Branding:          branding,
-		FaviconFilePath:   faviconFilePath,
-		CustomCSSFilePath: customCSSFilePath,
+	// Create the Graphiti app using the library API
+	app, err := graphiti.New(graphiti.Config{
+		BasePath:               "/",
+		NodeDefinitionsPath:    cfg.NodeDefinitions.Path,
+		CommandHistoryMaxDepth: cfg.CommandHistory.MaxUndoDepth,
+		Branding:               branding,
+	}, graphiti.Deps{
+		WorkflowRepo:  workflowRepo,
+		UserRepo:      userRepo,
+		ExecutionRepo: execRepo,
+		AuthProvider:  authAdapter,
+		DeployTarget:  deployTarget,
+		HMACSecret:    cfg.Deploy.HMACSecret,
+		SessionSecret: cfg.Auth.Session.Secret,
+		SessionMaxAge: time.Duration(cfg.Auth.Session.MaxAge) * time.Second,
+		SessionSecure: cfg.Auth.Session.Secure,
 	})
+	if err != nil {
+		slog.Error("failed to initialize graphiti", "error", err)
+		os.Exit(1)
+	}
 
 	// Start server
 	server := &http.Server{
 		Addr:         cfg.Server.Addr(),
-		Handler:      router,
+		Handler:      app.Handler(),
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
 	}

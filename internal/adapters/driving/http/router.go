@@ -1,6 +1,7 @@
 package http
 
 import (
+	"io/fs"
 	"net/http"
 	"time"
 
@@ -23,6 +24,7 @@ type RouterDeps struct {
 	Branding         templates.Branding
 	FaviconFilePath  string // filesystem path to favicon file (for serving)
 	CustomCSSFilePath string // filesystem path to custom CSS file (for serving)
+	StaticFS         fs.FS  // embedded static assets (if nil, serves from web/static/ on disk)
 }
 
 // NewRouter creates the HTTP handler with all routes configured.
@@ -33,7 +35,11 @@ func NewRouter(deps RouterDeps) http.Handler {
 	authLimiter := NewRateLimiter(10, time.Minute)
 
 	// Static files
-	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
+	if deps.StaticFS != nil {
+		mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(deps.StaticFS)))
+	} else {
+		mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
+	}
 
 	// Favicon (if configured)
 	if deps.FaviconFilePath != "" {

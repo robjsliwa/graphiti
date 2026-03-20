@@ -12,6 +12,10 @@ type contextKey string
 
 const userContextKey contextKey = "user_session"
 
+// ExportedUserContextKey is the context key for the user session,
+// exported for use by the graphiti library package.
+var ExportedUserContextKey = userContextKey
+
 // AuthMiddleware returns middleware that checks for a valid session cookie.
 // Requests to /auth/* and /static/* paths bypass authentication.
 // Unauthenticated requests are redirected to /auth/login.
