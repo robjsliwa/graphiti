@@ -90,6 +90,70 @@ func TestNodeRegistry_GetByCategory(t *testing.T) {
 	}
 }
 
+func TestNodeRegistry_Load_DuplicateIDs(t *testing.T) {
+	defs := []*domain.NodeDefinition{
+		{ID: "dup-id", Name: "First", Category: domain.Category{Group: "Sources"}},
+		{ID: "dup-id", Name: "Second", Category: domain.Category{Group: "Sources"}},
+		{ID: "unique-id", Name: "Third", Category: domain.Category{Group: "Processing"}},
+	}
+	repo := &fakeNodeDefRepo{defs: defs}
+	registry := NewNodeRegistry(repo)
+
+	if err := registry.Load(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Only first definition with duplicate ID should be kept
+	allDefs, _ := registry.GetAllDefinitions(context.Background())
+	if len(allDefs) != 2 {
+		t.Errorf("expected 2 definitions (duplicate skipped), got %d", len(allDefs))
+	}
+
+	// Should have a validation result for the duplicate
+	results := registry.LoadValidationResults()
+	found := false
+	for _, r := range results {
+		if r.Code == "DEFINITION_DUPLICATE_ACROSS_FILES" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected DEFINITION_DUPLICATE_ACROSS_FILES validation result")
+	}
+}
+
+func TestNodeRegistry_Load_SchemaValidation(t *testing.T) {
+	defs := []*domain.NodeDefinition{
+		{ID: "bad-api", Name: "Bad", APIVersion: "wrong/v2", Category: domain.Category{Group: "Sources"}},
+		{ID: "good", Name: "Good", Category: domain.Category{Group: "Sources"}},
+	}
+	repo := &fakeNodeDefRepo{defs: defs}
+	registry := NewNodeRegistry(repo)
+
+	if err := registry.Load(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Both definitions should load (schema issues are warnings/errors, not load blockers)
+	allDefs, _ := registry.GetAllDefinitions(context.Background())
+	if len(allDefs) != 2 {
+		t.Errorf("expected 2 definitions, got %d", len(allDefs))
+	}
+
+	results := registry.LoadValidationResults()
+	found := false
+	for _, r := range results {
+		if r.Code == "DEFINITION_INVALID_API_VERSION" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected DEFINITION_INVALID_API_VERSION validation result")
+	}
+}
+
 func TestNodeRegistry_Search(t *testing.T) {
 	repo := &fakeNodeDefRepo{defs: testDefs()}
 	registry := NewNodeRegistry(repo)

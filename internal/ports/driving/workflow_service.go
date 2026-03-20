@@ -25,6 +25,7 @@ type WorkflowService interface {
 	Redo(ctx context.Context, workflowID string) (*CommandResult, error)
 	CopyNodes(ctx context.Context, workflowID string, nodeIDs []string) (*domain.ClipboardPayload, error)
 	PasteNodes(ctx context.Context, workflowID string, payload *domain.ClipboardPayload, x, y float64) (*CommandResult, error)
+	ValidateWorkflow(ctx context.Context, workflowID string) ([]domain.ValidationResult, error)
 	DeployWorkflow(ctx context.Context, workflowID, target, userID string) (*domain.DeployResult, error)
 	ExportWorkflow(ctx context.Context, workflowID, format string) ([]byte, error)
 	GetVersionHistory(ctx context.Context, workflowID string) ([]*domain.WorkflowVersion, error)

@@ -83,10 +83,11 @@ type WorkflowInfo struct {
 
 // DeployResult is the outcome of a deploy operation.
 type DeployResult struct {
-	Success          bool
-	RunID            string
-	Message          string
-	ValidationErrors []ValidationError
+	Success           bool
+	RunID             string
+	Message           string
+	ValidationErrors  []ValidationError  // Deprecated: use ValidationResults
+	ValidationResults []ValidationResult // Structured validation results from ValidateAll
 }
 
 // DeployVerification represents the status of a deployment verification check.

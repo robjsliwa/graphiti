@@ -210,6 +210,45 @@ When you deploy a workflow, Graphiti sends a signed JSON payload to your configu
 
 The payload is signed with HMAC-SHA256 (header: `X-Graphiti-Signature`), retried with exponential backoff, and includes the full workflow definition for your engine to execute.
 
+### Workflow Validation
+
+Graphiti includes a comprehensive validation framework that catches errors before deployment. Validation runs on demand — click **Validate** to check, or validation runs automatically when you click **Deploy**.
+
+**Validate endpoint:**
+```
+POST /api/workflows/{id}/validate
+```
+
+Returns structured results:
+```json
+{
+  "valid": false,
+  "results": [
+    {
+      "severity": "error",
+      "category": "graph",
+      "code": "DISCONNECTED_SUBGRAPH",
+      "message": "Workflow has 2 disconnected subgraphs. All nodes must be reachable.",
+      "nodeId": "node-abc"
+    }
+  ],
+  "summary": { "errors": 1, "warnings": 0, "info": 0 }
+}
+```
+
+Validation checks include:
+
+| Category | What's Checked |
+|---|---|
+| **Graph** | Empty workflows, disconnected subgraphs, missing source/terminal nodes, cycles |
+| **Edge** | Self-references, missing nodes/ports, wrong direction, duplicates |
+| **Port** | Type mismatches (data/control/error), max connection limits, connection rules |
+| **Attribute** | Required fields, type checking, enum options, number ranges, JSON validity, secret env syntax |
+| **Definition** | YAML schema validation at load time (API version, shapes, ports, attributes) |
+| **Sub-workflow** | Missing references, self-references, circular chains, nesting depth |
+
+When validation fails on deploy, the canvas highlights problematic nodes (red dashed border for errors, amber for warnings) and edges (red). The deploy button shows an error count badge.
+
 ### Authentication
 
 Auth is always active — even in dev mode. The `FakeAuthAdapter` auto-authenticates a hardcoded dev user so every request flows through the same auth pipeline that production uses. When you're ready for real auth, switch one config value:
@@ -947,6 +986,20 @@ See [`config/app.yaml`](config/app.yaml) for server, storage, and deploy setting
 - [x] Viewport culling and level-of-detail (nodes outside viewport are hidden; text/ports simplified at low zoom)
 - [x] Full keyboard shortcut map with Tab/Shift+Tab node cycling and `?` help overlay
 - [x] Accessibility: ARIA labels on SVG nodes/edges, screen reader live region announcements, `:focus-visible` outlines, `.sr-only` utility, accessible theme toggle
+
+### Phase 6: Validation Framework — **Complete**
+
+- [x] Graph structure validation (empty workflow, disconnected subgraphs, missing source/terminal nodes, cycle detection with path reporting)
+- [x] Edge and port validation (self-reference, missing source/target nodes/ports, wrong direction, port type mismatch, duplicate edges, max connections, connection rules)
+- [x] Attribute validation (required fields, type checking for number/boolean/enum/secret/JSON, number range min/max, enum option matching, secret env var syntax, stale attribute detection)
+- [x] Node definition schema validation at YAML load time (API version, kind, required fields, shape types, port types/positions, attribute types, duplicate IDs, connection rule port refs)
+- [x] Sub-workflow validation integration (no reference, self-reference, circular reference, not found, nesting depth)
+- [x] Master `ValidateAll` method combining all validators with structured `ValidationResult` (severity, category, code, message, node/edge/field context)
+- [x] Deploy gate: deploy blocked when validation errors exist, returns structured results
+- [x] `POST /api/workflows/{id}/validate` endpoint returning results grouped by severity with summary counts
+- [x] Canvas UI validation feedback: error/warning node highlighting with dashed borders, edge error highlighting, deploy button error badge
+- [x] Validate button in toolbar for on-demand validation without deploying
+- [x] 35 validation codes across 6 categories (graph, edge, port, attribute, definition, subworkflow)
 
 ## Tech Stack
 

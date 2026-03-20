@@ -227,11 +227,160 @@
   border-color: var(--red) !important;
 }
 
-/* Node error highlight for validation failures */
+/* Node validation highlights */
 .node-error rect:first-child,
 .node-error polygon:first-child {
   stroke: var(--red) !important;
+  stroke-dasharray: 6 3;
   stroke-width: 2px;
+}
+
+.node-warning rect:first-child,
+.node-warning polygon:first-child {
+  stroke: var(--warning, #f59e0b) !important;
+  stroke-dasharray: 6 3;
+  stroke-width: 2px;
+}
+
+/* Validation badge on nodes */
+.validation-badge {
+  font-size: 10px;
+  font-weight: 600;
+  fill: white;
+  pointer-events: none;
+}
+
+.validation-badge-bg {
+  rx: 8;
+  ry: 8;
+}
+
+.validation-badge-bg.error {
+  fill: var(--red);
+}
+
+.validation-badge-bg.warning {
+  fill: var(--warning, #f59e0b);
+}
+
+/* Edge validation error */
+.edge-error {
+  stroke: var(--red) !important;
+  stroke-width: 2px;
+}
+
+/* Deploy button error badge */
+.deploy-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--red);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+/* Config badge for unconfigured nodes (soft validation) */
+.config-badge {
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* Disconnected node hint (soft validation) */
+.node-disconnected rect:first-child,
+.node-disconnected polygon:first-child {
+  stroke-dasharray: 4 4;
+  opacity: 0.7;
+}
+
+/* Validation results panel */
+.validation-panel {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  width: 380px;
+  max-height: 400px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.validation-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.validation-panel-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 0 4px;
+}
+
+.validation-panel-body {
+  overflow-y: auto;
+  padding: 8px 0;
+  max-height: 340px;
+}
+
+.validation-group {
+  padding: 0 14px;
+  margin-bottom: 8px;
+}
+
+.validation-group-header {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.validation-item {
+  font-size: 12px;
+  padding: 4px 0;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.validation-item:hover {
+  background: var(--bg);
+  border-radius: 4px;
+}
+
+.validation-error {
+  color: var(--red);
+}
+
+.validation-warning {
+  color: var(--warning, #f59e0b);
+}
+
+.validation-info {
+  color: var(--text-muted);
 }
 
 /* Mode tabs */
@@ -326,7 +475,7 @@
   align-items: center;
 }
 .node-status-id { font-family: var(--font-mono, monospace); font-size: 12px; }
-.node-error { color: var(--danger); font-size: 12px; margin-top: 4px; }
+.node-error-text { color: var(--danger); font-size: 12px; margin-top: 4px; }
 
 .node-logs { margin-top: 8px; }
 .node-logs summary { cursor: pointer; font-size: 12px; color: var(--text-muted); }

@@ -154,14 +154,14 @@ func Builder(data BuilderData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</span> <button class=\"btn btn-icon\" id=\"theme-toggle\" title=\"Toggle theme\" @click=\"themeMode = themeMode === 'light' ? 'dark' : (themeMode === 'dark' ? 'system' : 'light')\" x-text=\"themeMode === 'light' ? '\\u2600' : (themeMode === 'dark' ? '\\u263E' : '\\u2699')\" :aria-label=\"'Theme: ' + themeMode + '. Click to switch.'\">&#x2699;</button><div class=\"deploy-dropdown\" x-data=\"deployManager\" @click.outside=\"menuOpen = false\"><button class=\"btn btn-success\" id=\"deploy-btn\" :disabled=\"isDeploying\" :class=\"{ 'deploy-success': deployStatus === 'success', 'deploy-error': deployStatus === 'error' }\" x-text=\"isDeploying ? 'Deploying...' : (deployStatus === 'success' ? '\\u2713 Deployed' : 'Deploy')\" @click=\"deploy('production')\">Deploy</button> <button class=\"btn btn-success deploy-chevron\" title=\"Deploy options\" @click.stop=\"menuOpen = !menuOpen\">&#x25BE;</button><div class=\"deploy-menu\" x-show=\"menuOpen\" x-cloak @click.stop><button class=\"deploy-menu-item\" @click=\"deploy('production'); menuOpen = false\">Deploy to Production</button> <button class=\"deploy-menu-item\" @click=\"deploy('staging'); menuOpen = false\">Deploy to Staging</button><hr><button class=\"deploy-menu-item\" @click=\"toast.info('Workflow is auto-saved'); menuOpen = false\">Save as Draft</button><hr><button class=\"deploy-menu-item\" @click=\"exportWf('yaml'); menuOpen = false\">Export as YAML</button> <button class=\"deploy-menu-item\" @click=\"exportWf('json'); menuOpen = false\">Export as JSON</button></div></div><span class=\"nav-user\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</span> <button class=\"btn btn-icon\" id=\"theme-toggle\" title=\"Toggle theme\" @click=\"themeMode = themeMode === 'light' ? 'dark' : (themeMode === 'dark' ? 'system' : 'light')\" x-text=\"themeMode === 'light' ? '\\u2600' : (themeMode === 'dark' ? '\\u263E' : '\\u2699')\" :aria-label=\"'Theme: ' + themeMode + '. Click to switch.'\">&#x2699;</button><div class=\"deploy-dropdown\" x-data=\"deployManager\" @click.outside=\"menuOpen = false\"><button class=\"btn\" id=\"validate-btn\" title=\"Validate workflow\" :disabled=\"isValidating\" x-text=\"isValidating ? 'Validating...' : 'Validate'\" @click=\"validate()\">Validate</button> <button class=\"btn btn-success\" id=\"deploy-btn\" style=\"position: relative\" :disabled=\"isDeploying\" :class=\"{ 'deploy-success': deployStatus === 'success', 'deploy-error': deployStatus === 'error' }\" x-text=\"isDeploying ? 'Deploying...' : (deployStatus === 'success' ? '\\u2713 Deployed' : 'Deploy')\" @click=\"deploy('production')\">Deploy</button> <span class=\"deploy-badge\" x-show=\"errorCount > 0\" x-text=\"errorCount\" x-cloak></span> <button class=\"btn btn-success deploy-chevron\" title=\"Deploy options\" @click.stop=\"menuOpen = !menuOpen\">&#x25BE;</button><div class=\"deploy-menu\" x-show=\"menuOpen\" x-cloak @click.stop><button class=\"deploy-menu-item\" @click=\"deploy('production'); menuOpen = false\">Deploy to Production</button> <button class=\"deploy-menu-item\" @click=\"deploy('staging'); menuOpen = false\">Deploy to Staging</button><hr><button class=\"deploy-menu-item\" @click=\"toast.info('Workflow is auto-saved'); menuOpen = false\">Save as Draft</button><hr><button class=\"deploy-menu-item\" @click=\"exportWf('yaml'); menuOpen = false\">Export as YAML</button> <button class=\"deploy-menu-item\" @click=\"exportWf('json'); menuOpen = false\">Export as JSON</button></div></div><span class=\"nav-user\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(data.Username)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 81, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 86, Col: 42}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -182,7 +182,7 @@ func Builder(data BuilderData) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs("/api/workflows/" + data.Workflow.ID + "/runs")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 115, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 120, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -203,7 +203,7 @@ func Builder(data BuilderData) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(data.Workflow.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 157, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 162, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -221,7 +221,7 @@ func Builder(data BuilderData) templ.Component {
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(data.ParentWorkflowID)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 159, Col: 81}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 164, Col: 81}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {
@@ -234,7 +234,7 @@ func Builder(data BuilderData) templ.Component {
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(data.ParentNodeID)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 159, Col: 123}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 164, Col: 123}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {

@@ -41,7 +41,7 @@ templ ExecutionDetails(data ExecutionDetailsData) {
 						<span class={ "badge badge-sm", nodeBadgeClass(ns.Status) }>{ string(ns.Status) }</span>
 					</div>
 					if ns.ErrorMessage != "" {
-						<div class="node-error">{ ns.ErrorMessage }</div>
+						<div class="node-error-text">{ ns.ErrorMessage }</div>
 					}
 					if len(ns.Logs) > 0 {
 						<details class="node-logs">

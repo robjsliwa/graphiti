@@ -214,13 +214,17 @@ func (s *WorkflowService) DeployWorkflow(ctx context.Context, workflowID, target
 		return nil, err
 	}
 
-	// Validate first
-	errs := session.workflow.Validate()
-	if len(errs) > 0 {
+	// Validate (including sub-workflow chain checks)
+	allResults, err := s.ValidateWorkflow(ctx, workflowID)
+	if err != nil {
+		return nil, err
+	}
+	errors := domain.ErrorsOnly(allResults)
+	if len(errors) > 0 {
 		return &domain.DeployResult{
-			Success:          false,
-			Message:          fmt.Sprintf("validation failed with %d errors", len(errs)),
-			ValidationErrors: errs,
+			Success:           false,
+			Message:           fmt.Sprintf("Deployment blocked: %d error(s) found.", len(errors)),
+			ValidationResults: allResults,
 		}, nil
 	}
 
@@ -228,13 +232,18 @@ func (s *WorkflowService) DeployWorkflow(ctx context.Context, workflowID, target
 		return nil, fmt.Errorf("no deploy target configured")
 	}
 
-	defJSON, _ := json.Marshal(struct {
+	defJSON, err := json.Marshal(struct {
 		Nodes []domain.NodeInstance `json:"nodes"`
 		Edges []domain.Edge        `json:"edges"`
 	}{Nodes: session.workflow.Nodes, Edges: session.workflow.Edges})
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize workflow definition: %w", err)
+	}
 
 	var defAny any
-	json.Unmarshal(defJSON, &defAny)
+	if err := json.Unmarshal(defJSON, &defAny); err != nil {
+		return nil, fmt.Errorf("failed to prepare deployment payload: %w", err)
+	}
 
 	payload := domain.DeployPayload{
 		APIVersion: "graphiti/v1",
@@ -273,16 +282,66 @@ func (s *WorkflowService) DeployWorkflow(ctx context.Context, workflowID, target
 		CreatedAt:  time.Now(),
 	}
 	if err := s.repo.CreateVersion(ctx, versionRecord); err != nil {
-		// Log but don't fail the deploy
-		_ = err
+		slog.Error("failed to create version snapshot", "error", err, "workflowID", workflowID)
 	}
 
 	// Increment version on successful deploy
 	session.workflow.Version++
 	session.workflow.Status = domain.WorkflowStatusDeployed
-	s.repo.Update(ctx, session.workflow)
+	if err := s.repo.Update(ctx, session.workflow); err != nil {
+		slog.Error("failed to persist version increment after deploy", "error", err, "workflowID", workflowID)
+	}
 
 	return result, nil
+}
+
+func (s *WorkflowService) ValidateWorkflow(ctx context.Context, workflowID string) ([]domain.ValidationResult, error) {
+	session, err := s.getOrLoadSession(ctx, workflowID)
+	if err != nil {
+		return nil, err
+	}
+
+	s.resolveDefinitions(ctx, session.workflow)
+	reg := &nodeRegistryAdapter{registry: s.nodeRegistry}
+	results := session.workflow.ValidateAll(reg)
+
+	// Sub-workflow chain validation (needs repo access for cross-workflow checks)
+	resolver := &workflowResolverAdapter{repo: s.repo, ctx: ctx}
+	for _, node := range session.workflow.Nodes {
+		def := node.Definition
+		if def == nil {
+			def = reg.GetByID(node.DefinitionID)
+		}
+		if def == nil || def.Shape.Type != domain.ShapeSubWorkflow {
+			continue
+		}
+		if ref, ok := node.AttributeValues["workflow_ref"].(string); ok && ref != "" && ref != workflowID {
+			visited := map[string]bool{workflowID: true}
+			results = append(results, domain.ValidateSubworkflowChain(ref, resolver, visited, 1)...)
+		}
+	}
+
+	return results, nil
+}
+
+// nodeRegistryAdapter adapts *NodeRegistry (context-aware) to domain.NodeDefinitionRegistry (context-free).
+type nodeRegistryAdapter struct {
+	registry *NodeRegistry
+}
+
+func (a *nodeRegistryAdapter) GetByID(id string) *domain.NodeDefinition {
+	def, _ := a.registry.GetByID(context.Background(), id)
+	return def
+}
+
+// workflowResolverAdapter adapts the workflow repository to domain.WorkflowResolver.
+type workflowResolverAdapter struct {
+	repo driven.WorkflowRepository
+	ctx  context.Context
+}
+
+func (a *workflowResolverAdapter) ResolveWorkflow(id string) (*domain.Workflow, error) {
+	return a.repo.GetByID(a.ctx, id)
 }
 
 func (s *WorkflowService) ExportWorkflow(ctx context.Context, workflowID, format string) ([]byte, error) {

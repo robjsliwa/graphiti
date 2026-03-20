@@ -46,6 +46,8 @@ export class CommandDispatcher {
         toast.warning(`${label}: ${detail}`);
       } else if (result.workflow) {
         window.canvasEngine?.syncCanvas(result.workflow);
+        // Soft validation hints (Story 6.8)
+        this._applySoftValidation(result.workflow);
         // Announce successful operations to screen readers
         const announcements = {
           add_node: 'Node added',
@@ -83,6 +85,7 @@ export class CommandDispatcher {
       const result = await resp.json();
       if (result.ok && result.workflow) {
         window.canvasEngine?.syncCanvas(result.workflow);
+        this._applySoftValidation(result.workflow);
         this.selection?.clearSelection();
       } else if (result.error) {
         toast.info('Nothing to undo');
@@ -101,6 +104,7 @@ export class CommandDispatcher {
       const result = await resp.json();
       if (result.ok && result.workflow) {
         window.canvasEngine?.syncCanvas(result.workflow);
+        this._applySoftValidation(result.workflow);
         this.selection?.clearSelection();
       } else if (result.error) {
         toast.info('Nothing to redo');
@@ -118,6 +122,46 @@ export class CommandDispatcher {
     const redoBtn = document.getElementById('redo-btn');
     if (undoBtn) undoBtn.disabled = !canUndo;
     if (redoBtn) redoBtn.disabled = !canRedo;
+  }
+
+  // Soft validation: lightweight visual hints applied after each mutation (Story 6.8).
+  // No server round-trip — these are quick client-side checks on the workflow state.
+  _applySoftValidation(workflow) {
+    if (!workflow) return;
+    const nodes = workflow.nodes || [];
+
+    // Apply hints per node
+    nodes.forEach(node => {
+      const el = document.querySelector(`[data-node-id="${node.id}"]`);
+      if (!el) return;
+
+      // Clear previous soft hints
+      el.querySelectorAll('.config-badge').forEach(b => b.remove());
+
+      // Config badge: required attribute is empty
+      const def = node.definition;
+      if (def?.attributes) {
+        const missingRequired = def.attributes.some(attr => {
+          if (!attr.required) return false;
+          const val = node.attributeValues?.[attr.id];
+          return val === undefined || val === null || val === '';
+        });
+        if (missingRequired) {
+          const existing = el.querySelector('.config-badge');
+          if (!existing) {
+            const badge = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            badge.classList.add('config-badge');
+            badge.setAttribute('x', String((def.shape?.width || 200) - 8));
+            badge.setAttribute('y', '14');
+            badge.setAttribute('text-anchor', 'end');
+            badge.setAttribute('font-size', '10');
+            badge.setAttribute('fill', 'var(--warning, #f59e0b)');
+            badge.textContent = 'Config';
+            el.appendChild(badge);
+          }
+        }
+      }
+    });
   }
 
   _bindShortcuts() {

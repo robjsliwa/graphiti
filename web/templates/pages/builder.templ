@@ -56,11 +56,16 @@ templ Builder(data BuilderData) {
 					x-text="themeMode === 'light' ? '\u2600' : (themeMode === 'dark' ? '\u263E' : '\u2699')"
 					:aria-label="'Theme: ' + themeMode + '. Click to switch.'">&#x2699;</button>
 				<div class="deploy-dropdown" x-data="deployManager" @click.outside="menuOpen = false">
-					<button class="btn btn-success" id="deploy-btn"
+					<button class="btn" id="validate-btn" title="Validate workflow"
+						:disabled="isValidating"
+						x-text="isValidating ? 'Validating...' : 'Validate'"
+						@click="validate()">Validate</button>
+					<button class="btn btn-success" id="deploy-btn" style="position: relative"
 						:disabled="isDeploying"
 						:class="{ 'deploy-success': deployStatus === 'success', 'deploy-error': deployStatus === 'error' }"
 						x-text="isDeploying ? 'Deploying...' : (deployStatus === 'success' ? '\u2713 Deployed' : 'Deploy')"
 						@click="deploy('production')">Deploy</button>
+					<span class="deploy-badge" x-show="errorCount > 0" x-text="errorCount" x-cloak></span>
 					<button class="btn btn-success deploy-chevron" title="Deploy options"
 						@click.stop="menuOpen = !menuOpen">&#x25BE;</button>
 					<div class="deploy-menu" x-show="menuOpen" x-cloak @click.stop>

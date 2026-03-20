@@ -18,10 +18,12 @@ type deployRequest struct {
 }
 
 type deployResponse struct {
-	Success          bool                     `json:"success"`
-	RunID            string                   `json:"runId,omitempty"`
-	Message          string                   `json:"message,omitempty"`
-	ValidationErrors []validationErrorResponse `json:"validationErrors,omitempty"`
+	Success           bool                       `json:"success"`
+	RunID             string                     `json:"runId,omitempty"`
+	Message           string                     `json:"message,omitempty"`
+	ValidationErrors  []validationErrorResponse  `json:"validationErrors,omitempty"`
+	ValidationResults []validationResultResponse `json:"validationResults,omitempty"`
+	ValidationSummary *validationSummary         `json:"validationSummary,omitempty"`
 }
 
 type validationErrorResponse struct {
@@ -59,7 +61,7 @@ func handleDeploy(svc driving.WorkflowService) http.HandlerFunc {
 		result, err := svc.DeployWorkflow(r.Context(), workflowID, req.Target, userID)
 		if err != nil {
 			slog.Error("deploy failed", "error", err, "workflowId", workflowID)
-			writeJSON(w, http.StatusInternalServerError, deployResponse{Message: err.Error()})
+			writeJSON(w, http.StatusInternalServerError, deployResponse{Message: "deploy failed"})
 			return
 		}
 
@@ -68,12 +70,19 @@ func handleDeploy(svc driving.WorkflowService) http.HandlerFunc {
 			RunID:   result.RunID,
 			Message: result.Message,
 		}
+		// Populate legacy validation errors for backwards compatibility
 		for _, ve := range result.ValidationErrors {
 			resp.ValidationErrors = append(resp.ValidationErrors, validationErrorResponse{
 				NodeID:  ve.NodeID,
 				Field:   ve.Field,
 				Message: ve.Message,
 			})
+		}
+		// Populate new structured validation results
+		if len(result.ValidationResults) > 0 {
+			vr := buildValidateResponse(result.ValidationResults)
+			resp.ValidationResults = vr.Results
+			resp.ValidationSummary = &vr.Summary
 		}
 
 		status := http.StatusOK

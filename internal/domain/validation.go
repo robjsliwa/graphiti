@@ -89,3 +89,10 @@ func ByNode(results []ValidationResult) map[string][]ValidationResult {
 type WorkflowResolver interface {
 	ResolveWorkflow(id string) (*Workflow, error)
 }
+
+// NodeDefinitionRegistry provides access to node definitions for validation.
+// This interface lives in domain so that Validate() can accept it without
+// importing ports or adapters.
+type NodeDefinitionRegistry interface {
+	GetByID(id string) *NodeDefinition
+}

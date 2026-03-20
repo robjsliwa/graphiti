@@ -7,11 +7,22 @@ const maxSubworkflowNesting = 5
 // ValidateSubworkflows checks sub-workflow nodes within this workflow for
 // missing references and self-references. Cross-workflow circular reference
 // detection requires a WorkflowResolver and is handled by ValidateSubworkflowChain.
-func (w *Workflow) ValidateSubworkflows() []ValidationResult {
+// If registry is non-nil, it is used to look up definitions; otherwise falls back
+// to the node's pre-populated Definition field.
+func (w *Workflow) ValidateSubworkflows(registries ...NodeDefinitionRegistry) []ValidationResult {
+	var registry NodeDefinitionRegistry
+	if len(registries) > 0 {
+		registry = registries[0]
+	}
+
 	var results []ValidationResult
 
 	for _, node := range w.Nodes {
-		if node.Definition == nil || node.Definition.Shape.Type != ShapeSubWorkflow {
+		def := node.Definition
+		if def == nil && registry != nil {
+			def = registry.GetByID(node.DefinitionID)
+		}
+		if def == nil || def.Shape.Type != ShapeSubWorkflow {
 			continue
 		}
 
