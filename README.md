@@ -106,6 +106,62 @@ In development mode (`auth.provider: fake`), you're auto-authenticated as a dev 
 | `task dev` | Run directly with `go run` |
 | `task clean` | Remove build artifacts |
 
+### E2E Testing with Playwright
+
+Graphiti includes a full Playwright E2E test suite covering the dashboard, workflow builder, canvas interactions, keyboard shortcuts, and more.
+
+**Prerequisites:** Node.js 18+
+
+**Setup:**
+
+```bash
+npm install                        # Install Playwright and dependencies
+npx playwright install chromium    # Download Chromium browser
+```
+
+**Running tests:**
+
+```bash
+# Option 1: Let Playwright start the server automatically
+npx playwright test --workers=1
+
+# Option 2: Start the server yourself (faster for repeated runs)
+task run                           # In one terminal
+npx playwright test --workers=1    # In another terminal
+```
+
+> **Note:** `--workers=1` is required because the dev auth rate limiter allows 10 requests/minute. Running tests in parallel can exceed this limit.
+
+**Useful commands:**
+
+| Command | Description |
+|---|---|
+| `npx playwright test --workers=1` | Run all E2E tests |
+| `npx playwright test tests/dashboard/ --workers=1` | Run a specific test directory |
+| `npx playwright test --ui` | Open Playwright's interactive UI mode |
+| `npx playwright show-report` | View the HTML test report |
+
+**Test structure:**
+
+```
+tests/
+├── auth.setup.ts              # Auth fixture (runs once, saves session)
+├── helpers.ts                 # Shared helpers (createWorkflow, navigateToWorkflow)
+├── seed.spec.ts               # Basic health checks
+├── auth/                      # Login/logout flows
+├── dashboard/                 # Workflow list, create, delete
+├── builder/                   # Canvas, palette, config, deploy, execution, rename
+├── shortcuts/                 # Keyboard shortcuts and help modal
+└── clipboard/                 # Copy/cut/paste operations
+```
+
+**Testing patterns:**
+
+- **HTMX interactions** — Use `page.waitForResponse()` to wait for server round-trips, never `waitForNavigation()`
+- **Alpine.js state** — Assert on visible DOM changes; use `page.waitForFunction()` for Alpine state checks
+- **SVG canvas** — Use `[data-node-id]`, `[data-edge-id]`, `[data-port-id]` attribute selectors
+- **Selectors** — All interactive elements have `data-testid` attributes for stable test targeting
+
 ## How It Works
 
 ### Node Definitions
@@ -1285,6 +1341,7 @@ The example demonstrates:
 | Database | SQLite ([modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite), pure Go) |
 | Config | YAML ([gopkg.in/yaml.v3](https://pkg.go.dev/gopkg.in/yaml.v3)) |
 | Auth | Pluggable (fake for dev, GitHub OAuth for prod) |
+| E2E Testing | [Playwright](https://playwright.dev/) |
 | Build | [Task](https://taskfile.dev/) |
 
 ## Contributing
@@ -1299,7 +1356,8 @@ Key rules:
 
 ```bash
 # Run tests before submitting
-task test
+task test                          # Unit/integration tests
+npx playwright test --workers=1    # E2E tests
 
 # Check coverage
 task test:cover

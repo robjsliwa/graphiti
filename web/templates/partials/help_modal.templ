@@ -1,7 +1,7 @@
 package partials
 
 templ HelpModal(modKey string) {
-	<div id="shortcut-overlay" class="shortcut-overlay"
+	<div id="shortcut-overlay" data-testid="help-modal" class="shortcut-overlay"
 		@click.self="this.remove()"
 		@keydown.escape.window="document.getElementById('shortcut-overlay')?.remove()">
 		<div class="shortcut-modal">

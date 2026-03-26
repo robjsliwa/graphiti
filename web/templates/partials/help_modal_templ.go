@@ -29,7 +29,7 @@ func HelpModal(modKey string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"shortcut-overlay\" class=\"shortcut-overlay\" @click.self=\"this.remove()\" @keydown.escape.window=\"document.getElementById('shortcut-overlay')?.remove()\"><div class=\"shortcut-modal\"><h3>Keyboard Shortcuts</h3><div class=\"shortcut-grid\"><div class=\"shortcut-group\"><h4>Edit</h4><div><kbd>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"shortcut-overlay\" data-testid=\"help-modal\" class=\"shortcut-overlay\" @click.self=\"this.remove()\" @keydown.escape.window=\"document.getElementById('shortcut-overlay')?.remove()\"><div class=\"shortcut-modal\"><h3>Keyboard Shortcuts</h3><div class=\"shortcut-grid\"><div class=\"shortcut-group\"><h4>Edit</h4><div><kbd>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -32,7 +32,7 @@ func NewRouter(deps RouterDeps) http.Handler {
 	mux := http.NewServeMux()
 
 	// Rate limiter for auth endpoints
-	authLimiter := NewRateLimiter(10, time.Minute)
+	authLimiter := NewRateLimiter(100, time.Minute)
 
 	// Static files
 	if deps.StaticFS != nil {

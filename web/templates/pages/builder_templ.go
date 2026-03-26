@@ -131,7 +131,7 @@ func Builder(data BuilderData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" @click=\"if (!editing) { editing = true; $nextTick(() => { $refs.nameInput.focus(); $refs.nameInput.select(); }) }\" class=\"breadcrumb-name\"><span x-show=\"!editing\" x-text=\"name\" style=\"cursor: pointer;\" title=\"Click to rename\"></span> <input x-show=\"editing\" x-ref=\"nameInput\" x-model=\"name\" x-cloak @blur=\"editing = false; if (name.trim() && name !== original) { original = name; htmx.ajax('PATCH', '/api/workflows/' + document.getElementById('graphiti-data').dataset.workflowId + '/name', {values: {name: name.trim()}, swap: 'none'}) } else if (!name.trim()) { name = original }\" @keydown.enter=\"$refs.nameInput.blur()\" @keydown.escape=\"name = original; editing = false\" class=\"breadcrumb-edit-input\"></span> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" @click=\"if (!editing) { editing = true; $nextTick(() => { $refs.nameInput.focus(); $refs.nameInput.select(); }) }\" class=\"breadcrumb-name\"><span x-show=\"!editing\" x-text=\"name\" data-testid=\"workflow-name\" style=\"cursor: pointer;\" title=\"Click to rename\"></span> <input x-show=\"editing\" x-ref=\"nameInput\" x-model=\"name\" x-cloak data-testid=\"workflow-name-edit\" @blur=\"editing = false; if (name.trim() && name !== original) { original = name; htmx.ajax('PATCH', '/api/workflows/' + document.getElementById('graphiti-data').dataset.workflowId + '/name', {values: {name: name.trim()}, swap: 'none'}) } else if (!name.trim()) { name = original }\" @keydown.enter=\"$refs.nameInput.blur()\" @keydown.escape=\"name = original; editing = false\" class=\"breadcrumb-edit-input\"></span> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -148,26 +148,26 @@ func Builder(data BuilderData) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(itoa(data.Workflow.Version))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 53, Col: 62}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 54, Col: 62}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</span> <button class=\"btn btn-icon\" id=\"theme-toggle\" title=\"Toggle theme\" @click=\"themeMode = themeMode === 'light' ? 'dark' : (themeMode === 'dark' ? 'system' : 'light')\" x-text=\"themeMode === 'light' ? '\\u2600' : (themeMode === 'dark' ? '\\u263E' : '\\u2699')\" :aria-label=\"'Theme: ' + themeMode + '. Click to switch.'\">&#x2699;</button><div class=\"deploy-dropdown\" x-data=\"deployManager\" @click.outside=\"menuOpen = false\"><button class=\"btn\" id=\"validate-btn\" title=\"Validate workflow\" :disabled=\"isValidating\" x-text=\"isValidating ? 'Validating...' : 'Validate'\" @click=\"validate()\">Validate</button> <button class=\"btn btn-success\" id=\"deploy-btn\" style=\"position: relative\" :disabled=\"isDeploying\" :class=\"{ 'deploy-success': deployStatus === 'success', 'deploy-error': deployStatus === 'error' }\" x-text=\"isDeploying ? 'Deploying...' : (deployStatus === 'success' ? '\\u2713 Deployed' : 'Deploy')\" @click=\"deploy('production')\">Deploy</button> <span class=\"deploy-badge\" x-show=\"errorCount > 0\" x-text=\"errorCount\" x-cloak></span> <button class=\"btn btn-success deploy-chevron\" title=\"Deploy options\" @click.stop=\"menuOpen = !menuOpen\">&#x25BE;</button><div class=\"deploy-menu\" x-show=\"menuOpen\" x-cloak @click.stop><button class=\"deploy-menu-item\" @click=\"deploy('production'); menuOpen = false\">Deploy to Production</button> <button class=\"deploy-menu-item\" @click=\"deploy('staging'); menuOpen = false\">Deploy to Staging</button><hr><button class=\"deploy-menu-item\" @click=\"toast.info('Workflow is auto-saved'); menuOpen = false\">Save as Draft</button><hr><button class=\"deploy-menu-item\" @click=\"exportWf('yaml'); menuOpen = false\">Export as YAML</button> <button class=\"deploy-menu-item\" @click=\"exportWf('json'); menuOpen = false\">Export as JSON</button></div></div><span class=\"nav-user\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</span> <button class=\"btn btn-icon\" id=\"theme-toggle\" data-testid=\"theme-toggle\" title=\"Toggle theme\" @click=\"themeMode = themeMode === 'light' ? 'dark' : (themeMode === 'dark' ? 'system' : 'light')\" x-text=\"themeMode === 'light' ? '\\u2600' : (themeMode === 'dark' ? '\\u263E' : '\\u2699')\" :aria-label=\"'Theme: ' + themeMode + '. Click to switch.'\">&#x2699;</button><div class=\"deploy-dropdown\" x-data=\"deployManager\" @click.outside=\"menuOpen = false\"><button class=\"btn\" id=\"validate-btn\" data-testid=\"validate-btn\" title=\"Validate workflow\" :disabled=\"isValidating\" x-text=\"isValidating ? 'Validating...' : 'Validate'\" @click=\"validate()\">Validate</button> <button class=\"btn btn-success\" id=\"deploy-btn\" data-testid=\"deploy-btn\" style=\"position: relative\" :disabled=\"isDeploying\" :class=\"{ 'deploy-success': deployStatus === 'success', 'deploy-error': deployStatus === 'error' }\" x-text=\"isDeploying ? 'Deploying...' : (deployStatus === 'success' ? '\\u2713 Deployed' : 'Deploy')\" @click=\"deploy('production')\">Deploy</button> <span class=\"deploy-badge\" x-show=\"errorCount > 0\" x-text=\"errorCount\" x-cloak></span> <button class=\"btn btn-success deploy-chevron\" title=\"Deploy options\" @click.stop=\"menuOpen = !menuOpen\">&#x25BE;</button><div class=\"deploy-menu\" data-testid=\"deploy-menu\" x-show=\"menuOpen\" x-cloak @click.stop><button class=\"deploy-menu-item\" @click=\"deploy('production'); menuOpen = false\">Deploy to Production</button> <button class=\"deploy-menu-item\" @click=\"deploy('staging'); menuOpen = false\">Deploy to Staging</button><hr><button class=\"deploy-menu-item\" @click=\"toast.info('Workflow is auto-saved'); menuOpen = false\">Save as Draft</button><hr><button class=\"deploy-menu-item\" @click=\"exportWf('yaml'); menuOpen = false\">Export as YAML</button> <button class=\"deploy-menu-item\" @click=\"exportWf('json'); menuOpen = false\">Export as JSON</button></div></div><span class=\"nav-user\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(data.Username)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 86, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 87, Col: 42}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</span></div></nav><div x-data=\"executionMode\"><div class=\"mode-tabs\"><button class=\"mode-tab\" :class=\"{ active: mode === 'builder' }\" @click=\"setMode('builder')\">Builder</button> <button class=\"mode-tab\" :class=\"{ active: mode === 'execution' }\" @click=\"setMode('execution')\">Execution</button></div><div class=\"builder-layout\"><aside class=\"panel panel-left\" id=\"palette-panel\"><div id=\"panel-left-builder\" x-show=\"mode === 'builder'\"><div class=\"panel-header\"><h2>Components</h2><input type=\"search\" placeholder=\"Search nodes...\" class=\"search-input\" name=\"q\" hx-get=\"/api/nodes/search\" hx-trigger=\"keyup changed delay:200ms\" hx-target=\"#node-palette\"></div><div id=\"node-palette\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</span></div></nav><div x-data=\"executionMode\"><div class=\"mode-tabs\"><button class=\"mode-tab\" data-testid=\"mode-tab-builder\" :class=\"{ active: mode === 'builder' }\" @click=\"setMode('builder')\">Builder</button> <button class=\"mode-tab\" data-testid=\"mode-tab-execution\" :class=\"{ active: mode === 'execution' }\" @click=\"setMode('execution')\">Execution</button></div><div class=\"builder-layout\"><aside class=\"panel panel-left\" id=\"palette-panel\"><div id=\"panel-left-builder\" x-show=\"mode === 'builder'\"><div class=\"panel-header\"><h2>Components</h2><input type=\"search\" placeholder=\"Search nodes...\" class=\"search-input\" data-testid=\"node-search-input\" name=\"q\" hx-get=\"/api/nodes/search\" hx-trigger=\"keyup changed delay:200ms\" hx-target=\"#node-palette\"></div><div id=\"node-palette\" data-testid=\"node-palette-results\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -175,14 +175,14 @@ func Builder(data BuilderData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</div></div><div id=\"panel-left-execution\" x-show=\"mode === 'execution'\" x-cloak><div class=\"panel-header\"><h2>Run History</h2></div><div id=\"execution-run-list\" hx-get=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</div></div><div id=\"panel-left-execution\" data-testid=\"panel-left-execution\" x-show=\"mode === 'execution'\" x-cloak><div class=\"panel-header\"><h2>Run History</h2></div><div id=\"execution-run-list\" data-testid=\"execution-run-list\" hx-get=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs("/api/workflows/" + data.Workflow.ID + "/runs")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 120, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 122, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -196,14 +196,14 @@ func Builder(data BuilderData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div x-data=\"canvasContextMenu\" x-show=\"open\" x-cloak class=\"context-menu\" :style=\"'left:' + x + 'px; top:' + y + 'px'\" @click.outside=\"open = false\" @keydown.escape.window=\"open = false\"><button class=\"context-menu-item\" @click=\"deleteEdge()\">Delete connection</button></div><div class=\"canvas-hud\"><div class=\"zoom-controls\"><button class=\"btn btn-icon\" id=\"zoom-out\" title=\"Zoom out\">-</button> <span id=\"zoom-level\">100%</span> <button class=\"btn btn-icon\" id=\"zoom-in\" title=\"Zoom in\">+</button> <button class=\"btn btn-icon\" id=\"zoom-fit\" title=\"Fit to view\">Fit</button></div><div class=\"undo-redo\" id=\"undo-redo-controls\"><button class=\"btn btn-icon\" id=\"undo-btn\" title=\"Undo (Ctrl+Z)\" disabled>&#x21A9;</button> <button class=\"btn btn-icon\" id=\"redo-btn\" title=\"Redo (Ctrl+Shift+Z)\" disabled>&#x21AA;</button></div></div></main><aside class=\"panel panel-right\" id=\"config-panel\"><div class=\"panel-header\"><h2>Configuration</h2></div><div class=\"panel-body\" id=\"config-content\"><div class=\"empty-config\"><p>Select a node to configure</p></div></div></aside></div></div><div id=\"graphiti-data\" data-workflow-id=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div x-data=\"canvasContextMenu\" x-show=\"open\" x-cloak class=\"context-menu\" :style=\"'left:' + x + 'px; top:' + y + 'px'\" @click.outside=\"open = false\" @keydown.escape.window=\"open = false\"><button class=\"context-menu-item\" @click=\"deleteEdge()\">Delete connection</button></div><div class=\"canvas-hud\"><div class=\"zoom-controls\"><button class=\"btn btn-icon\" id=\"zoom-out\" data-testid=\"zoom-out-btn\" title=\"Zoom out\">-</button> <span id=\"zoom-level\">100%</span> <button class=\"btn btn-icon\" id=\"zoom-in\" data-testid=\"zoom-in-btn\" title=\"Zoom in\">+</button> <button class=\"btn btn-icon\" id=\"zoom-fit\" data-testid=\"zoom-fit-btn\" title=\"Fit to view\">Fit</button></div><div class=\"undo-redo\" id=\"undo-redo-controls\"><button class=\"btn btn-icon\" id=\"undo-btn\" data-testid=\"undo-btn\" title=\"Undo (Ctrl+Z)\" disabled>&#x21A9;</button> <button class=\"btn btn-icon\" id=\"redo-btn\" data-testid=\"redo-btn\" title=\"Redo (Ctrl+Shift+Z)\" disabled>&#x21AA;</button></div></div></main><aside class=\"panel panel-right\" id=\"config-panel\" data-testid=\"config-panel\"><div class=\"panel-header\"><h2>Configuration</h2></div><div class=\"panel-body\" id=\"config-content\"><div class=\"empty-config\"><p>Select a node to configure</p></div></div></aside></div></div><div id=\"graphiti-data\" data-workflow-id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(data.Workflow.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 162, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 164, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -221,7 +221,7 @@ func Builder(data BuilderData) templ.Component {
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(data.ParentWorkflowID)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 164, Col: 81}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 166, Col: 81}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {
@@ -234,7 +234,7 @@ func Builder(data BuilderData) templ.Component {
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(data.ParentNodeID)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 164, Col: 123}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/builder.templ`, Line: 166, Col: 123}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
@@ -265,6 +265,10 @@ func jsEscape(s string) string {
 	s = strings.ReplaceAll(s, `'`, `\'`)
 	s = strings.ReplaceAll(s, "\n", `\n`)
 	s = strings.ReplaceAll(s, "\r", `\r`)
+	s = strings.ReplaceAll(s, "`", "\\`")
+	s = strings.ReplaceAll(s, "</script>", `<\/script>`)
+	s = strings.ReplaceAll(s, "\u2028", `\u2028`)
+	s = strings.ReplaceAll(s, "\u2029", `\u2029`)
 	return s
 }
 

@@ -75,7 +75,7 @@ func Dashboard(data DashboardData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</span></div><div class=\"nav-breadcrumb\">/ Workflows</div><div class=\"nav-actions\"><button class=\"btn btn-icon\" id=\"theme-toggle\" title=\"Toggle theme\" @click=\"themeMode = themeMode === 'light' ? 'dark' : (themeMode === 'dark' ? 'system' : 'light')\" x-text=\"themeMode === 'light' ? '\\u2600' : (themeMode === 'dark' ? '\\u263E' : '\\u2699')\" :aria-label=\"'Theme: ' + themeMode + '. Click to switch.'\">&#x2699;</button> <span class=\"nav-user\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</span></div><div class=\"nav-breadcrumb\">/ Workflows</div><div class=\"nav-actions\"><button class=\"btn btn-icon\" id=\"theme-toggle\" data-testid=\"theme-toggle\" title=\"Toggle theme\" @click=\"themeMode = themeMode === 'light' ? 'dark' : (themeMode === 'dark' ? 'system' : 'light')\" x-text=\"themeMode === 'light' ? '\\u2600' : (themeMode === 'dark' ? '\\u263E' : '\\u2699')\" :aria-label=\"'Theme: ' + themeMode + '. Click to switch.'\">&#x2699;</button> <span class=\"nav-user\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -88,7 +88,7 @@ func Dashboard(data DashboardData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</span><form method=\"POST\" action=\"/auth/logout\" style=\"display:inline\"><button type=\"submit\" class=\"btn btn-ghost\">Logout</button></form></div></nav><main class=\"dashboard\"><div class=\"dashboard-header\"><h1>Workflows</h1><form method=\"POST\" action=\"/workflows\" hx-post=\"/workflows\" hx-swap=\"none\"><input type=\"hidden\" name=\"name\" value=\"Untitled Workflow\"> <button type=\"submit\" class=\"btn btn-primary\">+ New Workflow</button></form></div><div class=\"workflow-grid\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</span><form method=\"POST\" action=\"/auth/logout\" style=\"display:inline\"><button type=\"submit\" class=\"btn btn-ghost\" data-testid=\"logout-btn\">Logout</button></form></div></nav><main class=\"dashboard\"><div class=\"dashboard-header\"><h1>Workflows</h1><form method=\"POST\" action=\"/workflows\" hx-post=\"/workflows\" hx-swap=\"none\" data-testid=\"create-workflow-form\"><input type=\"hidden\" name=\"name\" value=\"Untitled Workflow\" data-testid=\"workflow-name-input\"> <button type=\"submit\" class=\"btn btn-primary\" data-testid=\"create-workflow-btn\">+ New Workflow</button></form></div><div class=\"workflow-grid\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -99,68 +99,81 @@ func Dashboard(data DashboardData) templ.Component {
 				}
 			}
 			for _, wf := range data.Workflows {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"workflow-card-wrapper\"><a href=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"workflow-card-wrapper\" data-testid=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var5 templ.SafeURL
-				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/workflows/" + wf.ID))
+				var templ_7745c5c3_Var5 string
+				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs("workflow-card-" + wf.ID)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 56, Col: 52}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 55, Col: 78}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" class=\"workflow-card\"><div class=\"workflow-card-header\"><h3>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"><a href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var6 string
-				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(wf.Name)
+				var templ_7745c5c3_Var6 templ.SafeURL
+				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/workflows/" + wf.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 58, Col: 21}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 56, Col: 52}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</h3>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" class=\"workflow-card\"><div class=\"workflow-card-header\"><h3>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var7 = []any{"badge", badgeClass(wf.Status)}
-				templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var7...)
+				var templ_7745c5c3_Var7 string
+				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(wf.Name)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 58, Col: 21}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<span class=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</h3>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var8 string
-				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var7).String())
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 1, Col: 0}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+				var templ_7745c5c3_Var8 = []any{"badge", badgeClass(wf.Status)}
+				templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var8...)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<span class=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var9 string
-				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(string(wf.Status))
+				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var8).String())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 59, Col: 74}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 1, Col: 0}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</span> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var10 string
+				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(string(wf.Status))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 59, Col: 74}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</span> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -170,64 +183,64 @@ func Dashboard(data DashboardData) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div><div class=\"workflow-card-meta\"><span>v")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var10 string
-				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(itoa(wf.Version))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 65, Col: 33}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</span> <time x-data x-text=\"new Date($el.getAttribute('datetime')).toLocaleDateString(undefined, {month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'})\" datetime=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</div><div class=\"workflow-card-meta\"><span>v")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var11 string
-				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(wf.UpdatedAt.UTC().Format("2006-01-02T15:04:05Z"))
+				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(itoa(wf.Version))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 69, Col: 70}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 65, Col: 33}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</span> <time x-data x-text=\"new Date($el.getAttribute('datetime')).toLocaleDateString(undefined, {month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'})\" datetime=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var12 string
-				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(wf.UpdatedAt.UTC().Format("Jan 2, 2006 15:04 UTC"))
+				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(wf.UpdatedAt.UTC().Format("2006-01-02T15:04:05Z"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 70, Col: 62}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 69, Col: 70}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</time></div></a> <button class=\"btn btn-ghost btn-sm workflow-delete\" hx-delete=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var13 string
-				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs("/workflows/" + wf.ID)
+				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(wf.UpdatedAt.UTC().Format("Jan 2, 2006 15:04 UTC"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 75, Col: 40}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 70, Col: 62}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" hx-confirm=\"Delete this workflow? This cannot be undone.\" hx-swap=\"none\" title=\"Delete workflow\">&#x2715;</button></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</time></div></a> <button class=\"btn btn-ghost btn-sm workflow-delete\" data-testid=\"delete-workflow-btn\" hx-delete=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var14 string
+				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs("/workflows/" + wf.ID)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 76, Col: 40}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" hx-confirm=\"Delete this workflow? This cannot be undone.\" hx-swap=\"none\" title=\"Delete workflow\">&#x2715;</button></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</div></main>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</div></main>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

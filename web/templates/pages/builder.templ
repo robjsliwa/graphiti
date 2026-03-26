@@ -38,8 +38,9 @@ templ Builder(data BuilderData) {
 				<span x-data={ "{ editing: false, name: '" + jsEscape(data.Workflow.Name) + "', original: '" + jsEscape(data.Workflow.Name) + "' }" }
 					@click="if (!editing) { editing = true; $nextTick(() => { $refs.nameInput.focus(); $refs.nameInput.select(); }) }"
 					class="breadcrumb-name">
-					<span x-show="!editing" x-text="name" style="cursor: pointer;" title="Click to rename"></span>
+					<span x-show="!editing" x-text="name" data-testid="workflow-name" style="cursor: pointer;" title="Click to rename"></span>
 					<input x-show="editing" x-ref="nameInput" x-model="name" x-cloak
+						data-testid="workflow-name-edit"
 						@blur="editing = false; if (name.trim() && name !== original) { original = name; htmx.ajax('PATCH', '/api/workflows/' + document.getElementById('graphiti-data').dataset.workflowId + '/name', {values: {name: name.trim()}, swap: 'none'}) } else if (!name.trim()) { name = original }"
 						@keydown.enter="$refs.nameInput.blur()"
 						@keydown.escape="name = original; editing = false"
@@ -51,16 +52,16 @@ templ Builder(data BuilderData) {
 			</div>
 			<div class="nav-actions">
 				<span class="version-badge">v{ itoa(data.Workflow.Version) }</span>
-				<button class="btn btn-icon" id="theme-toggle" title="Toggle theme"
+				<button class="btn btn-icon" id="theme-toggle" data-testid="theme-toggle" title="Toggle theme"
 					@click="themeMode = themeMode === 'light' ? 'dark' : (themeMode === 'dark' ? 'system' : 'light')"
 					x-text="themeMode === 'light' ? '\u2600' : (themeMode === 'dark' ? '\u263E' : '\u2699')"
 					:aria-label="'Theme: ' + themeMode + '. Click to switch.'">&#x2699;</button>
 				<div class="deploy-dropdown" x-data="deployManager" @click.outside="menuOpen = false">
-					<button class="btn" id="validate-btn" title="Validate workflow"
+					<button class="btn" id="validate-btn" data-testid="validate-btn" title="Validate workflow"
 						:disabled="isValidating"
 						x-text="isValidating ? 'Validating...' : 'Validate'"
 						@click="validate()">Validate</button>
-					<button class="btn btn-success" id="deploy-btn" style="position: relative"
+					<button class="btn btn-success" id="deploy-btn" data-testid="deploy-btn" style="position: relative"
 						:disabled="isDeploying"
 						:class="{ 'deploy-success': deployStatus === 'success', 'deploy-error': deployStatus === 'error' }"
 						x-text="isDeploying ? 'Deploying...' : (deployStatus === 'success' ? '\u2713 Deployed' : 'Deploy')"
@@ -68,7 +69,7 @@ templ Builder(data BuilderData) {
 					<span class="deploy-badge" x-show="errorCount > 0" x-text="errorCount" x-cloak></span>
 					<button class="btn btn-success deploy-chevron" title="Deploy options"
 						@click.stop="menuOpen = !menuOpen">&#x25BE;</button>
-					<div class="deploy-menu" x-show="menuOpen" x-cloak @click.stop>
+					<div class="deploy-menu" data-testid="deploy-menu" x-show="menuOpen" x-cloak @click.stop>
 						<button class="deploy-menu-item"
 							@click="deploy('production'); menuOpen = false">Deploy to Production</button>
 						<button class="deploy-menu-item"
@@ -88,9 +89,9 @@ templ Builder(data BuilderData) {
 		</nav>
 		<div x-data="executionMode">
 		<div class="mode-tabs">
-			<button class="mode-tab" :class="{ active: mode === 'builder' }"
+			<button class="mode-tab" data-testid="mode-tab-builder" :class="{ active: mode === 'builder' }"
 				@click="setMode('builder')">Builder</button>
-			<button class="mode-tab" :class="{ active: mode === 'execution' }"
+			<button class="mode-tab" data-testid="mode-tab-execution" :class="{ active: mode === 'execution' }"
 				@click="setMode('execution')">Execution</button>
 		</div>
 		<div class="builder-layout">
@@ -102,21 +103,22 @@ templ Builder(data BuilderData) {
 							type="search"
 							placeholder="Search nodes..."
 							class="search-input"
+							data-testid="node-search-input"
 							name="q"
 							hx-get="/api/nodes/search"
 							hx-trigger="keyup changed delay:200ms"
 							hx-target="#node-palette"
 						/>
 					</div>
-					<div id="node-palette">
+					<div id="node-palette" data-testid="node-palette-results">
 						@partials.NodePalette(data.NodeDefinitions)
 					</div>
 				</div>
-				<div id="panel-left-execution" x-show="mode === 'execution'" x-cloak>
+				<div id="panel-left-execution" data-testid="panel-left-execution" x-show="mode === 'execution'" x-cloak>
 					<div class="panel-header">
 						<h2>Run History</h2>
 					</div>
-					<div id="execution-run-list"
+					<div id="execution-run-list" data-testid="execution-run-list"
 						hx-get={ "/api/workflows/" + data.Workflow.ID + "/runs" }
 						hx-trigger="load"
 						hx-swap="innerHTML"
@@ -136,18 +138,18 @@ templ Builder(data BuilderData) {
 				</div>
 				<div class="canvas-hud">
 					<div class="zoom-controls">
-						<button class="btn btn-icon" id="zoom-out" title="Zoom out">-</button>
+						<button class="btn btn-icon" id="zoom-out" data-testid="zoom-out-btn" title="Zoom out">-</button>
 						<span id="zoom-level">100%</span>
-						<button class="btn btn-icon" id="zoom-in" title="Zoom in">+</button>
-						<button class="btn btn-icon" id="zoom-fit" title="Fit to view">Fit</button>
+						<button class="btn btn-icon" id="zoom-in" data-testid="zoom-in-btn" title="Zoom in">+</button>
+						<button class="btn btn-icon" id="zoom-fit" data-testid="zoom-fit-btn" title="Fit to view">Fit</button>
 					</div>
 					<div class="undo-redo" id="undo-redo-controls">
-						<button class="btn btn-icon" id="undo-btn" title="Undo (Ctrl+Z)" disabled>&#x21A9;</button>
-						<button class="btn btn-icon" id="redo-btn" title="Redo (Ctrl+Shift+Z)" disabled>&#x21AA;</button>
+						<button class="btn btn-icon" id="undo-btn" data-testid="undo-btn" title="Undo (Ctrl+Z)" disabled>&#x21A9;</button>
+						<button class="btn btn-icon" id="redo-btn" data-testid="redo-btn" title="Redo (Ctrl+Shift+Z)" disabled>&#x21AA;</button>
 					</div>
 				</div>
 			</main>
-			<aside class="panel panel-right" id="config-panel">
+			<aside class="panel panel-right" id="config-panel" data-testid="config-panel">
 				<div class="panel-header">
 					<h2>Configuration</h2>
 				</div>
@@ -176,5 +178,9 @@ func jsEscape(s string) string {
 	s = strings.ReplaceAll(s, `'`, `\'`)
 	s = strings.ReplaceAll(s, "\n", `\n`)
 	s = strings.ReplaceAll(s, "\r", `\r`)
+	s = strings.ReplaceAll(s, "`", "\\`")
+	s = strings.ReplaceAll(s, "</script>", `<\/script>`)
+	s = strings.ReplaceAll(s, "\u2028", `\u2028`)
+	s = strings.ReplaceAll(s, "\u2029", `\u2029`)
 	return s
 }

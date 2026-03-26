@@ -16,6 +16,7 @@ function ensureContainer() {
   if (container && document.body.contains(container)) return container;
   container = document.createElement('div');
   container.className = 'toast-container';
+  container.setAttribute('data-testid', 'toast-container');
   container.setAttribute('aria-live', 'polite');
   document.body.appendChild(container);
   return container;

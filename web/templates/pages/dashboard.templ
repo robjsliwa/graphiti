@@ -22,22 +22,22 @@ templ Dashboard(data DashboardData) {
 			</div>
 			<div class="nav-breadcrumb">/ Workflows</div>
 			<div class="nav-actions">
-				<button class="btn btn-icon" id="theme-toggle" title="Toggle theme"
+				<button class="btn btn-icon" id="theme-toggle" data-testid="theme-toggle" title="Toggle theme"
 					@click="themeMode = themeMode === 'light' ? 'dark' : (themeMode === 'dark' ? 'system' : 'light')"
 					x-text="themeMode === 'light' ? '\u2600' : (themeMode === 'dark' ? '\u263E' : '\u2699')"
 					:aria-label="'Theme: ' + themeMode + '. Click to switch.'">&#x2699;</button>
 				<span class="nav-user">{ data.Username }</span>
 				<form method="POST" action="/auth/logout" style="display:inline">
-					<button type="submit" class="btn btn-ghost">Logout</button>
+					<button type="submit" class="btn btn-ghost" data-testid="logout-btn">Logout</button>
 				</form>
 			</div>
 		</nav>
 		<main class="dashboard">
 			<div class="dashboard-header">
 				<h1>Workflows</h1>
-				<form method="POST" action="/workflows" hx-post="/workflows" hx-swap="none">
-					<input type="hidden" name="name" value="Untitled Workflow"/>
-					<button type="submit" class="btn btn-primary">+ New Workflow</button>
+				<form method="POST" action="/workflows" hx-post="/workflows" hx-swap="none" data-testid="create-workflow-form">
+					<input type="hidden" name="name" value="Untitled Workflow" data-testid="workflow-name-input"/>
+					<button type="submit" class="btn btn-primary" data-testid="create-workflow-btn">+ New Workflow</button>
 				</form>
 			</div>
 			<div class="workflow-grid">
@@ -52,7 +52,7 @@ templ Dashboard(data DashboardData) {
 					</div>
 				}
 				for _, wf := range data.Workflows {
-					<div class="workflow-card-wrapper">
+					<div class="workflow-card-wrapper" data-testid={ "workflow-card-" + wf.ID }>
 						<a href={ templ.SafeURL("/workflows/" + wf.ID) } class="workflow-card">
 							<div class="workflow-card-header">
 								<h3>{ wf.Name }</h3>
@@ -72,6 +72,7 @@ templ Dashboard(data DashboardData) {
 						</a>
 						<button
 							class="btn btn-ghost btn-sm workflow-delete"
+							data-testid="delete-workflow-btn"
 							hx-delete={ "/workflows/" + wf.ID }
 							hx-confirm="Delete this workflow? This cannot be undone."
 							hx-swap="none"

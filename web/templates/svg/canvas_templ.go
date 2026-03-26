@@ -34,14 +34,14 @@ func Canvas(wf *domain.Workflow) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<svg id=\"workflow-canvas\" class=\"workflow-canvas\" xmlns=\"http://www.w3.org/2000/svg\" width=\"100%\" height=\"100%\" role=\"application\" aria-label=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<svg id=\"workflow-canvas\" data-testid=\"workflow-canvas\" class=\"workflow-canvas\" xmlns=\"http://www.w3.org/2000/svg\" width=\"100%\" height=\"100%\" role=\"application\" aria-label=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs("Workflow canvas: " + wf.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 16, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 17, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -103,7 +103,7 @@ func Node(node *domain.NodeInstance) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs("node-" + node.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 57, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 58, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -116,7 +116,7 @@ func Node(node *domain.NodeInstance) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(node.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 59, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 60, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -129,7 +129,7 @@ func Node(node *domain.NodeInstance) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(node.DefinitionID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 60, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 61, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -142,7 +142,7 @@ func Node(node *domain.NodeInstance) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("translate(%g, %g)", node.X, node.Y))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 61, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 62, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -155,7 +155,7 @@ func Node(node *domain.NodeInstance) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(nodeAriaLabel(node))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 63, Col: 34}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 64, Col: 34}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -176,7 +176,7 @@ func Node(node *domain.NodeInstance) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(nodeWidth(node))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 71, Col: 26}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 72, Col: 26}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -189,7 +189,7 @@ func Node(node *domain.NodeInstance) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(headerBg(node))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 76, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 77, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -202,7 +202,7 @@ func Node(node *domain.NodeInstance) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(nodeWidth(node))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 82, Col: 26}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 83, Col: 26}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -215,7 +215,7 @@ func Node(node *domain.NodeInstance) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(headerBg(node))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 84, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 85, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
@@ -228,7 +228,7 @@ func Node(node *domain.NodeInstance) templ.Component {
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(headerColor(node))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 87, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 88, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -241,7 +241,7 @@ func Node(node *domain.NodeInstance) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(nodeIcon(node))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 88, Col: 19}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 89, Col: 19}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -254,7 +254,7 @@ func Node(node *domain.NodeInstance) templ.Component {
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(headerColor(node))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 91, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 92, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {
@@ -267,7 +267,7 @@ func Node(node *domain.NodeInstance) templ.Component {
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(node.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 92, Col: 15}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 93, Col: 15}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
@@ -286,7 +286,7 @@ func Node(node *domain.NodeInstance) templ.Component {
 				var templ_7745c5c3_Var17 string
 				templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", ba.X))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 98, Col: 32}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 99, Col: 32}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 				if templ_7745c5c3_Err != nil {
@@ -299,7 +299,7 @@ func Node(node *domain.NodeInstance) templ.Component {
 				var templ_7745c5c3_Var18 string
 				templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", ba.Y))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 99, Col: 32}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 100, Col: 32}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 				if templ_7745c5c3_Err != nil {
@@ -312,7 +312,7 @@ func Node(node *domain.NodeInstance) templ.Component {
 				var templ_7745c5c3_Var19 string
 				templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(ba.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 102, Col: 15}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 103, Col: 15}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 				if templ_7745c5c3_Err != nil {
@@ -325,7 +325,7 @@ func Node(node *domain.NodeInstance) templ.Component {
 				var templ_7745c5c3_Var20 string
 				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(ba.Value)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 102, Col: 29}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 103, Col: 29}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 				if templ_7745c5c3_Err != nil {
@@ -409,7 +409,7 @@ func Port(node *domain.NodeInstance, port domain.PortDefinition, isInput bool, i
 		var templ_7745c5c3_Var24 string
 		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(port.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 121, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 122, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 		if templ_7745c5c3_Err != nil {
@@ -422,7 +422,7 @@ func Port(node *domain.NodeInstance, port domain.PortDefinition, isInput bool, i
 		var templ_7745c5c3_Var25 string
 		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(string(port.Type))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 122, Col: 36}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 123, Col: 36}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 		if templ_7745c5c3_Err != nil {
@@ -435,7 +435,7 @@ func Port(node *domain.NodeInstance, port domain.PortDefinition, isInput bool, i
 		var templ_7745c5c3_Var26 string
 		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(boolStr(isInput))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 123, Col: 34}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 124, Col: 34}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 		if templ_7745c5c3_Err != nil {
@@ -448,7 +448,7 @@ func Port(node *domain.NodeInstance, port domain.PortDefinition, isInput bool, i
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(portX(node, port, isInput))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 124, Col: 33}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 125, Col: 33}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 		if templ_7745c5c3_Err != nil {
@@ -461,7 +461,7 @@ func Port(node *domain.NodeInstance, port domain.PortDefinition, isInput bool, i
 		var templ_7745c5c3_Var28 string
 		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(portY(node, port, isInput, index))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 125, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 126, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 		if templ_7745c5c3_Err != nil {
@@ -474,7 +474,7 @@ func Port(node *domain.NodeInstance, port domain.PortDefinition, isInput bool, i
 		var templ_7745c5c3_Var29 string
 		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(port.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 128, Col: 21}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 129, Col: 21}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 		if templ_7745c5c3_Err != nil {
@@ -510,7 +510,7 @@ func Port(node *domain.NodeInstance, port domain.PortDefinition, isInput bool, i
 			var templ_7745c5c3_Var32 string
 			templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(portLabelX(node, isInput))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 133, Col: 32}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 134, Col: 32}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 			if templ_7745c5c3_Err != nil {
@@ -523,7 +523,7 @@ func Port(node *domain.NodeInstance, port domain.PortDefinition, isInput bool, i
 			var templ_7745c5c3_Var33 string
 			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(portLabelY(node, isInput, index))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 134, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 135, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 			if templ_7745c5c3_Err != nil {
@@ -536,7 +536,7 @@ func Port(node *domain.NodeInstance, port domain.PortDefinition, isInput bool, i
 			var templ_7745c5c3_Var34 string
 			templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(port.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 136, Col: 15}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 137, Col: 15}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 			if templ_7745c5c3_Err != nil {
@@ -608,7 +608,7 @@ func edgeGroup(edge domain.Edge, path string, ariaLabel string) templ.Component 
 		var templ_7745c5c3_Var37 string
 		templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(edge.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 148, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 149, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 		if templ_7745c5c3_Err != nil {
@@ -621,7 +621,7 @@ func edgeGroup(edge domain.Edge, path string, ariaLabel string) templ.Component 
 		var templ_7745c5c3_Var38 string
 		templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(edge.SourceNodeID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 149, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 150, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 		if templ_7745c5c3_Err != nil {
@@ -634,7 +634,7 @@ func edgeGroup(edge domain.Edge, path string, ariaLabel string) templ.Component 
 		var templ_7745c5c3_Var39 string
 		templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(edge.TargetNodeID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 150, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 151, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 		if templ_7745c5c3_Err != nil {
@@ -647,7 +647,7 @@ func edgeGroup(edge domain.Edge, path string, ariaLabel string) templ.Component 
 		var templ_7745c5c3_Var40 string
 		templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(edge.SourcePortID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 151, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 152, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 		if templ_7745c5c3_Err != nil {
@@ -660,7 +660,7 @@ func edgeGroup(edge domain.Edge, path string, ariaLabel string) templ.Component 
 		var templ_7745c5c3_Var41 string
 		templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(edge.TargetPortID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 152, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 153, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 		if templ_7745c5c3_Err != nil {
@@ -673,7 +673,7 @@ func edgeGroup(edge domain.Edge, path string, ariaLabel string) templ.Component 
 		var templ_7745c5c3_Var42 string
 		templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(ariaLabel)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 154, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 155, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 		if templ_7745c5c3_Err != nil {
@@ -686,7 +686,7 @@ func edgeGroup(edge domain.Edge, path string, ariaLabel string) templ.Component 
 		var templ_7745c5c3_Var43 string
 		templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(path)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 158, Col: 11}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 159, Col: 11}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 		if templ_7745c5c3_Err != nil {
@@ -699,7 +699,7 @@ func edgeGroup(edge domain.Edge, path string, ariaLabel string) templ.Component 
 		var templ_7745c5c3_Var44 string
 		templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(path)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 166, Col: 11}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 167, Col: 11}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 		if templ_7745c5c3_Err != nil {
@@ -742,7 +742,7 @@ func nodeShape(node *domain.NodeInstance) templ.Component {
 			var templ_7745c5c3_Var46 string
 			templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(diamondPoints(node))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 179, Col: 31}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 180, Col: 31}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 			if templ_7745c5c3_Err != nil {
@@ -760,7 +760,7 @@ func nodeShape(node *domain.NodeInstance) templ.Component {
 			var templ_7745c5c3_Var47 string
 			templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(hexagonPoints(node))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 187, Col: 31}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 188, Col: 31}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
 			if templ_7745c5c3_Err != nil {
@@ -778,7 +778,7 @@ func nodeShape(node *domain.NodeInstance) templ.Component {
 			var templ_7745c5c3_Var48 string
 			templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(nodeWidth(node))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 198, Col: 26}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 199, Col: 26}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 			if templ_7745c5c3_Err != nil {
@@ -791,7 +791,7 @@ func nodeShape(node *domain.NodeInstance) templ.Component {
 			var templ_7745c5c3_Var49 string
 			templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(nodeHeight(node))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 199, Col: 28}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 200, Col: 28}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 			if templ_7745c5c3_Err != nil {
@@ -804,7 +804,7 @@ func nodeShape(node *domain.NodeInstance) templ.Component {
 			var templ_7745c5c3_Var50 string
 			templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinStringErrs(nodeWidthInset(node, 6))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 210, Col: 34}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 211, Col: 34}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var50))
 			if templ_7745c5c3_Err != nil {
@@ -817,7 +817,7 @@ func nodeShape(node *domain.NodeInstance) templ.Component {
 			var templ_7745c5c3_Var51 string
 			templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(nodeHeightInset(node, 6))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 211, Col: 36}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 212, Col: 36}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 			if templ_7745c5c3_Err != nil {
@@ -835,7 +835,7 @@ func nodeShape(node *domain.NodeInstance) templ.Component {
 			var templ_7745c5c3_Var52 string
 			templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(nodeWidth(node))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 223, Col: 26}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 224, Col: 26}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
 			if templ_7745c5c3_Err != nil {
@@ -848,7 +848,7 @@ func nodeShape(node *domain.NodeInstance) templ.Component {
 			var templ_7745c5c3_Var53 string
 			templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(nodeHeight(node))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 224, Col: 28}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/svg/canvas.templ`, Line: 225, Col: 28}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var53))
 			if templ_7745c5c3_Err != nil {
