@@ -143,7 +143,16 @@ func handleNodeSearch(registry driving.NodeRegistryService) http.HandlerFunc {
 		query := r.URL.Query().Get("q")
 		nodes, err := registry.Search(r.Context(), query)
 		if err != nil {
-			http.Error(w, "search failed", http.StatusInternalServerError)
+			if wantsJSON(r) {
+				writeJSONError(w, http.StatusInternalServerError, "search failed")
+			} else {
+				http.Error(w, "search failed", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		if wantsJSON(r) {
+			writeJSON(w, http.StatusOK, map[string]any{"items": nodes})
 			return
 		}
 
@@ -171,13 +180,48 @@ func handleNodeConfig(svc driving.WorkflowService) http.HandlerFunc {
 
 		wf, err := svc.GetWorkflow(r.Context(), workflowID)
 		if err != nil {
-			http.Error(w, "workflow not found", http.StatusNotFound)
+			if wantsJSON(r) {
+				writeJSONError(w, http.StatusNotFound, "workflow not found")
+			} else {
+				http.Error(w, "workflow not found", http.StatusNotFound)
+			}
 			return
 		}
 
 		node := wf.FindNode(nodeID)
 		if node == nil {
-			http.Error(w, "node not found", http.StatusNotFound)
+			if wantsJSON(r) {
+				writeJSONError(w, http.StatusNotFound, "node not found")
+			} else {
+				http.Error(w, "node not found", http.StatusNotFound)
+			}
+			return
+		}
+
+		if wantsJSON(r) {
+			// Build JSON response with masked secrets
+			attrs := make(map[string]any)
+			for k, v := range node.AttributeValues {
+				attrs[k] = v
+			}
+			maskSecretAttributes(attrs, node.Definition)
+
+			nodeResp := map[string]any{
+				"id":           node.ID,
+				"definitionId": node.DefinitionID,
+				"label":        node.Label,
+				"x":            node.X,
+				"y":            node.Y,
+				"attributes":   attrs,
+			}
+			var defResp any
+			if node.Definition != nil {
+				defResp = buildNodeDefJSON(node.Definition)
+			}
+			writeJSON(w, http.StatusOK, map[string]any{
+				"node":       nodeResp,
+				"definition": defResp,
+			})
 			return
 		}
 
@@ -187,6 +231,39 @@ func handleNodeConfig(svc driving.WorkflowService) http.HandlerFunc {
 		}
 		partials.ConfigPanel(data).Render(r.Context(), w)
 	}
+}
+
+// buildNodeDefJSON converts a domain NodeDefinition to its JSON representation.
+func buildNodeDefJSON(def *domain.NodeDefinition) *nodeDefJSON {
+	result := &nodeDefJSON{
+		Icon: def.Icon,
+		Shape: shapeJSON{
+			Type: string(def.Shape.Type), Width: def.Shape.Width,
+			HeaderColor: def.Shape.HeaderColor, HeaderBackground: def.Shape.HeaderBackground,
+		},
+		Category:   categoryJSON{Group: def.Category.Group},
+		Inputs:     make([]portDefJSON, 0, len(def.Inputs)),
+		Outputs:    make([]portDefJSON, 0, len(def.Outputs)),
+		Attributes: make([]attrDefJSON, 0, len(def.Attributes)),
+	}
+	for _, p := range def.Inputs {
+		result.Inputs = append(result.Inputs, portDefJSON{
+			ID: p.ID, Label: p.Label, Type: string(p.Type),
+			Position: string(p.Position), MaxConnections: p.MaxConnections,
+		})
+	}
+	for _, p := range def.Outputs {
+		result.Outputs = append(result.Outputs, portDefJSON{
+			ID: p.ID, Label: p.Label, Type: string(p.Type),
+			Position: string(p.Position), MaxConnections: p.MaxConnections,
+		})
+	}
+	for _, a := range def.Attributes {
+		result.Attributes = append(result.Attributes, attrDefJSON{
+			ID: a.ID, Label: a.Label, Type: string(a.Type), Display: string(a.Display),
+		})
+	}
+	return result
 }
 
 func handleHelp() http.HandlerFunc {

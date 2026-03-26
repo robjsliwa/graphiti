@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"graphiti/internal/domain"
 	"graphiti/internal/ports/driving"
@@ -149,21 +150,91 @@ func handleAttributeUpdate(svc driving.WorkflowService, registry driving.NodeReg
 		workflowID := r.PathValue("id")
 		nodeID := r.PathValue("nodeId")
 
-		// Parse form data (HTMX sends form data)
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, "invalid form data", http.StatusBadRequest)
-			return
-		}
-
 		// Get current node to find old values
 		wf, err := svc.GetWorkflow(r.Context(), workflowID)
 		if err != nil {
-			http.Error(w, "workflow not found", http.StatusNotFound)
+			if wantsJSON(r) {
+				writeJSONError(w, http.StatusNotFound, "workflow not found")
+			} else {
+				http.Error(w, "workflow not found", http.StatusNotFound)
+			}
 			return
 		}
 		node := wf.FindNode(nodeID)
 		if node == nil {
-			http.Error(w, "node not found", http.StatusNotFound)
+			if wantsJSON(r) {
+				writeJSONError(w, http.StatusNotFound, "node not found")
+			} else {
+				http.Error(w, "node not found", http.StatusNotFound)
+			}
+			return
+		}
+
+		// Determine if this is a JSON request or form-encoded
+		isJSON := strings.Contains(r.Header.Get("Content-Type"), "application/json")
+
+		if isJSON {
+			// JSON body: {"attributes": {"key": "value", ...}}
+			var body struct {
+				Attributes map[string]any `json:"attributes"`
+			}
+			if !decodeJSONBody(w, r, &body) {
+				return
+			}
+
+			for attrID, newValue := range body.Attributes {
+				oldValue := node.AttributeValues[attrID]
+				cmd, err := buildCommand(commandRequest{
+					Type:     "update_attribute",
+					NodeID:   nodeID,
+					AttrID:   attrID,
+					OldValue: oldValue,
+					NewValue: newValue,
+				}, resolver)
+				if err != nil {
+					writeJSONError(w, http.StatusBadRequest, "invalid attribute", attrID)
+					return
+				}
+				if _, err := svc.ExecuteCommand(r.Context(), workflowID, cmd); err != nil {
+					slog.Error("attribute update failed", "error", err, "nodeId", nodeID, "attrId", attrID)
+					writeJSONError(w, http.StatusUnprocessableEntity, "attribute update failed", err.Error())
+					return
+				}
+			}
+
+			// Re-fetch and return updated node as JSON
+			wf, err = svc.GetWorkflow(r.Context(), workflowID)
+			if err != nil {
+				writeJSONError(w, http.StatusInternalServerError, "internal error")
+				return
+			}
+			updatedNode := wf.FindNode(nodeID)
+			if updatedNode == nil {
+				writeJSONError(w, http.StatusInternalServerError, "node not found after update")
+				return
+			}
+
+			// Mask secret attributes in response
+			attrs := make(map[string]any)
+			for k, v := range updatedNode.AttributeValues {
+				attrs[k] = v
+			}
+			maskSecretAttributes(attrs, updatedNode.Definition)
+
+			writeJSON(w, http.StatusOK, map[string]any{
+				"node": map[string]any{
+					"id":           updatedNode.ID,
+					"definitionId": updatedNode.DefinitionID,
+					"label":        updatedNode.Label,
+					"attributes":   attrs,
+				},
+			})
+			return
+		}
+
+		// Form-encoded (HTMX path)
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "invalid form data", http.StatusBadRequest)
 			return
 		}
 

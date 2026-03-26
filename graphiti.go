@@ -88,6 +88,14 @@ type Deps struct {
 	SessionSecret string
 	SessionMaxAge time.Duration
 	SessionSecure bool
+
+	// Optional: token validator for bearer token auth (API clients).
+	// If nil, only session-based auth is used.
+	TokenValidator driven.TokenValidator
+
+	// Optional: CORS configuration for /api/ routes.
+	// Empty AllowedOrigins disables CORS headers entirely.
+	CORS httpAdapter.CORSConfig
 }
 
 // ExecutionUpdate is the data the host engine sends when a node's
@@ -226,16 +234,18 @@ func New(cfg Config, deps Deps) (*App, error) {
 
 	// Build HTTP handler
 	router := httpAdapter.NewRouter(httpAdapter.RouterDeps{
-		WorkflowSvc:  workflowSvc,
-		ExecutionSvc: execSvc,
-		NodeRegistry: nodeRegistry,
-		AuthProvider: deps.AuthProvider,
-		UserRepo:     deps.UserRepo,
-		SessionStore: sessionStore,
-		WSHub:        wsHub,
-		HMACSecret:   deps.HMACSecret,
-		Branding:     cfg.Branding,
-		StaticFS:     embeddedStaticFS,
+		WorkflowSvc:    workflowSvc,
+		ExecutionSvc:   execSvc,
+		NodeRegistry:   nodeRegistry,
+		AuthProvider:   deps.AuthProvider,
+		UserRepo:       deps.UserRepo,
+		SessionStore:   sessionStore,
+		WSHub:          wsHub,
+		HMACSecret:     deps.HMACSecret,
+		Branding:       cfg.Branding,
+		StaticFS:       embeddedStaticFS,
+		TokenValidator: deps.TokenValidator,
+		CORS:           deps.CORS,
 	})
 
 	return &App{

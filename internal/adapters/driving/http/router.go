@@ -25,6 +25,13 @@ type RouterDeps struct {
 	FaviconFilePath  string // filesystem path to favicon file (for serving)
 	CustomCSSFilePath string // filesystem path to custom CSS file (for serving)
 	StaticFS         fs.FS  // embedded static assets (if nil, serves from web/static/ on disk)
+
+	// TokenValidator enables bearer token auth for API clients.
+	// If nil, only session-based auth is used.
+	TokenValidator driven.TokenValidator
+
+	// CORS controls Cross-Origin Resource Sharing for /api/ routes.
+	CORS CORSConfig
 }
 
 // NewRouter creates the HTTP handler with all routes configured.
@@ -68,7 +75,7 @@ func NewRouter(deps RouterDeps) http.Handler {
 		mux.HandleFunc("POST /api/callbacks/execution", handleExecutionCallback(deps.ExecutionSvc, deps.WSHub, deps.HMACSecret))
 	}
 
-	// Protected routes - wrap in auth middleware
+	// Protected routes - wrap in auth middleware (with optional token validator)
 	protected := http.NewServeMux()
 	protected.HandleFunc("GET /", handleDashboard(deps.WorkflowSvc, deps.Branding))
 	protected.HandleFunc("POST /workflows", handleCreateWorkflow(deps.WorkflowSvc))
@@ -104,6 +111,13 @@ func NewRouter(deps RouterDeps) http.Handler {
 	protected.HandleFunc("GET /api/workflows/{id}/export", handleExport(deps.WorkflowSvc))
 	protected.HandleFunc("GET /api/workflows/{id}/versions", handleVersionHistory(deps.WorkflowSvc))
 
+	// JSON API routes (headless mode)
+	protected.HandleFunc("GET /api/workflows", handleAPIListWorkflows(deps.WorkflowSvc))
+	protected.HandleFunc("POST /api/workflows", handleAPICreateWorkflow(deps.WorkflowSvc))
+	protected.HandleFunc("GET /api/workflows/{id}/overview", handleAPIGetWorkflow(deps.WorkflowSvc, deps.NodeRegistry))
+	protected.HandleFunc("DELETE /api/workflows/{id}", handleAPIDeleteWorkflow(deps.WorkflowSvc))
+	protected.HandleFunc("GET /api/workflows/{id}/state", handleAPIWorkflowState(deps.WorkflowSvc))
+
 	// Execution mode routes
 	if deps.ExecutionSvc != nil {
 		protected.HandleFunc("GET /api/workflows/{id}/runs", handleListRuns(deps.ExecutionSvc))
@@ -115,7 +129,13 @@ func NewRouter(deps RouterDeps) http.Handler {
 		protected.HandleFunc("GET /api/ws/workflows/{id}", handleWebSocket(deps.WSHub))
 	}
 
-	mux.Handle("/", AuthMiddleware(deps.SessionStore, deps.UserRepo)(protected))
+	// Apply auth middleware (with optional token validator)
+	authMw := AuthMiddlewareWithToken(deps.SessionStore, deps.TokenValidator, deps.UserRepo)
+
+	// Apply CORS middleware
+	corsMw := CORSMiddleware(deps.CORS)
+
+	mux.Handle("/", corsMw(authMw(protected)))
 
 	return mux
 }

@@ -1,6 +1,8 @@
 package http
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -167,3 +169,129 @@ func TestGetSession_NoSession(t *testing.T) {
 		t.Error("expected nil session when no session in context")
 	}
 }
+
+// --- Bearer Token Auth Tests ---
+
+func TestAuthMiddlewareWithToken_ValidBearerToken(t *testing.T) {
+	store := newTestSessionStore()
+	tokenStore := &fakeTokenValidator{tokens: map[string]string{"valid-token": "user-42"}}
+	var gotSession *Session
+
+	handler := AuthMiddlewareWithToken(store, tokenStore)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotSession = GetSession(r)
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/workflows", nil)
+	req.Header.Set("Authorization", "Bearer valid-token")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	if gotSession == nil {
+		t.Fatal("expected session from bearer token")
+	}
+	if gotSession.UserID != "user-42" {
+		t.Errorf("UserID = %q, want %q", gotSession.UserID, "user-42")
+	}
+}
+
+func TestAuthMiddlewareWithToken_InvalidBearerToken(t *testing.T) {
+	store := newTestSessionStore()
+	tokenStore := &fakeTokenValidator{tokens: map[string]string{}}
+
+	handler := AuthMiddlewareWithToken(store, tokenStore)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/workflows", nil)
+	req.Header.Set("Authorization", "Bearer bad-token")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestAuthMiddlewareWithToken_APIRouteNoAuthReturnsJSON401(t *testing.T) {
+	store := newTestSessionStore()
+
+	handler := AuthMiddlewareWithToken(store, nil)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/workflows", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+	// Should be JSON, not redirect
+	if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("Content-Type = %q, want %q", ct, "application/json")
+	}
+}
+
+func TestAuthMiddlewareWithToken_NilValidatorFallsToSession(t *testing.T) {
+	store := newTestSessionStore()
+	var gotSession *Session
+
+	handler := AuthMiddlewareWithToken(store, nil)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotSession = GetSession(r)
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	session := &Session{
+		UserID:    "user-1",
+		Username:  "testuser",
+		ExpiresAt: time.Now().Add(1 * time.Hour),
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/workflows", nil)
+	setSessionCookie(req, store, session)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	if gotSession == nil || gotSession.UserID != "user-1" {
+		t.Error("expected session from cookie fallback")
+	}
+}
+
+func TestAuthMiddlewareWithToken_HTMLRouteRedirects(t *testing.T) {
+	store := newTestSessionStore()
+
+	handler := AuthMiddlewareWithToken(store, nil)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusFound)
+	}
+	if loc := rec.Header().Get("Location"); loc != "/auth/login" {
+		t.Errorf("Location = %q, want %q", loc, "/auth/login")
+	}
+}
+
+// fakeTokenValidator is a test implementation of driven.TokenValidator.
+type fakeTokenValidator struct {
+	tokens map[string]string
+}
+
+func (f *fakeTokenValidator) ValidateToken(_ context.Context, token string) (string, error) {
+	if userID, ok := f.tokens[token]; ok {
+		return userID, nil
+	}
+	return "", errors.New("invalid token")
+}
+
