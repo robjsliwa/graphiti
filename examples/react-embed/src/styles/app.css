@@ -1,0 +1,292 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #f5f5f5;
+  color: #333;
+}
+
+/* Dashboard */
+.dashboard {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.dashboard-header h1 {
+  font-size: 1.5rem;
+}
+
+.workflow-list {
+  list-style: none;
+}
+
+.workflow-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+}
+
+.workflow-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95rem;
+}
+
+.workflow-name {
+  font-weight: 500;
+}
+
+.workflow-status {
+  font-size: 0.8rem;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.delete-btn {
+  background: none;
+  border: 1px solid #e0e0e0;
+  color: #c00;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  margin-left: 0.5rem;
+}
+
+.empty {
+  color: #888;
+  text-align: center;
+  padding: 2rem;
+}
+
+.error {
+  color: #c00;
+}
+
+/* Builder */
+.builder {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.builder-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.builder-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.builder-sidebar {
+  width: 220px;
+  border-right: 1px solid #e0e0e0;
+  background: #fff;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.builder-canvas {
+  flex: 1;
+  position: relative;
+  background: #fafafa;
+}
+
+.canvas-element {
+  display: block;
+}
+
+.builder-config {
+  width: 280px;
+  border-left: 1px solid #e0e0e0;
+  background: #fff;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.config-placeholder {
+  color: #888;
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.toolbar button {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.toolbar button:hover {
+  background: #f0f0f0;
+}
+
+.toolbar button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.deploy-msg {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+/* Node Palette */
+.node-palette h3 {
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.palette-group h4 {
+  font-size: 0.8rem;
+  color: #888;
+  text-transform: uppercase;
+  margin: 0.75rem 0 0.25rem;
+}
+
+.palette-group ul {
+  list-style: none;
+}
+
+.palette-node {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  margin-bottom: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.palette-node:hover {
+  background: #eef;
+}
+
+/* Config Panel */
+.config-panel h3 {
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.config-def-id {
+  font-size: 0.8rem;
+  color: #888;
+  margin-bottom: 1rem;
+}
+
+.config-attr {
+  margin-bottom: 0.75rem;
+}
+
+.config-attr label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.config-attr input[type="text"],
+.config-attr input[type="number"],
+.config-attr input[type="password"],
+.config-attr textarea {
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.config-attr textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+
+/* Error toast */
+.error-toast {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #c00;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.error-toast button {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* Buttons (global) */
+button {
+  font-family: inherit;
+}
+
+.dashboard-header button {
+  padding: 0.5rem 1rem;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.dashboard-header button:hover {
+  background: #1d4ed8;
+}
+
+.dashboard-header button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
